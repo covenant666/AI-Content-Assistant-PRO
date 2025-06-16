@@ -48,7 +48,7 @@ This is an open-source project made with love. If you enjoy it and it has saved 
 
 * [☕ Support via PayPal](https://www.paypal.me/lukas180)
 
-Found a bug or have an idea for a new feature? Feel free to open an [Issue](https://github.com/your-username/covenant666/issues) (don't forget to edit this link!).
+Found a bug or have an idea for a new feature? Feel free to open an [Issue](https://github.com/your-username/covenant666/issues) 
 
 ## 📄 License
 

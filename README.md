@@ -10,7 +10,11 @@ This tool was created to simplify and accelerate the process of creating product
 
 
 
-https://github.com/user-attachments/assets/4fa0d9d9-91e7-4710-8d5c-2634fda843f1
+
+
+https://github.com/user-attachments/assets/70dee1b4-b81e-446d-a2cd-95eb031c0105
+
+
 
 
 

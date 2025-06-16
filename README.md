@@ -8,7 +8,10 @@
 
 This tool was created to simplify and accelerate the process of creating product listings for e-commerce platforms. Forget about the tedious task of writing descriptions and specifications—let artificial intelligence do the work for you.
 
-[ADD A GIF OR SCREENSHOT OF THE APP HERE]
+
+![s2025-06-16 204342](https://github.com/user-attachments/assets/bae577f7-ff69-49b5-8e62-862798f4151d)
+![bb 2025-06-16 204416](https://github.com/user-attachments/assets/a6e265ee-cf11-4298-be17-ce1675823981)
+![a2025-06-16 204247](https://github.com/user-attachments/assets/37a4c40d-f509-4d09-ad09-ad69a58ba59a)
 
 ## ✨ Key Features
 

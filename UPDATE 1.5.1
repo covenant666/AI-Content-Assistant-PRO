@@ -893,6 +893,7 @@ const translations = {
         chatRenamePrompt: (title) => `Zadejte nový název konverzace:`,
         newChatName: "Nová konverzace",
         welcomeChatTitle: "Vítejte! 👋",
+        TUTORIAL_TEXT: "Vítejte v AI Content Assistant PRO!\n\nJsem váš osobní pomocník pro tvorbu produktových nabídek. Celou aplikaci můžete přepínat mezi češtinou a angličtinou pomocí přepínače v záhlaví. Zde je rychlý přehled funkcí:\n\n**I. Hlavní Nástroje (v menu 'Další nástroje')**\n* **eBay/Aukro Editor:** Hlavní nástroje pro tvorbu a úpravu HTML šablon pro vaše aukce.\n* **Generátor Faktur:** Vytvořte a vytiskněte/uložte jednoduché faktury v CZ nebo EN.\n* **Převodník Obrázků:** Snadno převeďte obrázky mezi formáty JPG, PNG a WEBP přímo v prohlížeči.\n* **Převodník Měn:** Jednoduchý převodník pro okamžitý přepočet částky.\n* **Kontakty Firem:** Rychlý přehled kontaktů na výrobce. Nově můžete vyhledávat firmy pomocí AI.\n* **Nastavení (Admin):** Umožňuje upravit texty v eBay šabloně a provádět kompletní zálohu a obnovu dat aplikace.\n\n**II. Práce s Editorem (eBay / Aukro)**\n* **Automatický náhled:** Vše, co napíšete do polí vlevo, se okamžitě projeví v živém náhledu vpravo.\n* **Vyplnit vše pomocí AI:** Zadejte název produktu (pro eBay doporučujeme i EAN/PN) a klikněte na fialové tlačítko. AI se pokusí automaticky vyplnit všechna ostatní pole.\n* **Ovládací tlačítka:** Kopírování, stažení, reset šablony, maximalizace náhledu a kompletní smazání dat.\n* **Historie změn (ikona 🕖):** U klíčových polí si můžete zobrazit historii změn a vrátit se ke starší verzi.\n\n**III. AI Chat Asistent (toto okno)**\n* **Kontextová znalost:** Pokud máte v editoru vyplněný název produktu, chat bude automaticky znát kontext vaší práce.\n* **Ovládání okna:** Pomocí ikon vpravo nahoře můžete chat obnovit (🔄), zvětšit (🔲) nebo zprůhlednit pozadí (👁️), což vám umožní pracovat s editorem, i když je chat otevřený.\n* **Vkládání textu:** U odpovědi od AI najdete tlačítko \"Vložit text\", které vám umožní jedním klikem vložit obsah do vybraného pole v editoru.\n\nDoufám, že vám tento návod pomůže. Neváhejte se na cokoliv zeptat!",
         insertText: "Vložit text",
         rename: "Přejmenovat",
         delete: "Smazat",
@@ -1098,6 +1099,7 @@ const translations = {
         chatRenamePrompt: (title) => `Enter a new name for the conversation:`,
         newChatName: "New Conversation",
         welcomeChatTitle: "Welcome! 👋",
+        TUTORIAL_TEXT: "Welcome to AI Content Assistant PRO!\n\nI am your personal assistant for creating product listings. You can switch the entire application between Czech and English using the switcher in the header. Here is a quick overview of the features:\n\n**I. Main Tools (in the 'More Tools' menu)**\n* **eBay/Aukro Editor:** The main tools for creating and editing HTML templates for your listings.\n* **Invoice Generator:** Create and print/save simple invoices in CZ or EN.\n* **Image Converter:** Easily convert images between JPG, PNG, and WEBP formats directly in your browser.\n* **Currency Converter:** A simple converter for instant amount calculations.\n* **Company Contacts:** A quick overview of manufacturer contacts. You can now also search for companies using AI.\n* **Settings (Admin):** Allows you to edit texts in the eBay template and perform a complete backup and restore of application data.\n\n**II. Working with the Editor (eBay / Aukro)**\n* **Live Preview:** Everything you type into the fields on the left is immediately reflected in the live preview on the right.\n* **Fill all with AI:** Enter a product name (for eBay, we also recommend EAN/PN) and click the purple button. The AI will try to automatically fill in all other fields.\n* **Control Buttons:** Copying, downloading, resetting the template, maximizing the preview, and completely deleting data.\n* **Change History (🕖 icon):** For key fields, you can view the change history and revert to an older version.\n\n**III. AI Chat Assistant (this window)**\n* **Contextual Knowledge:** If you have a product name filled in the editor, the chat will automatically know the context of your work.\n* **Window Controls:** Using the icons in the top right, you can refresh the chat (🔄), maximize it (🔲), or make the background transparent (👁️), allowing you to work with the editor while the chat is open.\n* **Insert Text:** Next to the AI's response, you will find an \"Insert Text\" button, which allows you to insert the content into a selected field in the editor with one click.\n\nI hope this guide helps you. Feel free to ask anything!",
         insertText: "Insert text",
         rename: "Rename",
         delete: "Delete",
@@ -2038,7 +2040,10 @@ function initializeChat() {
 function showTutorial() {
     if (chatData.activeChatId) {
         const activeChat = chatData.chats[chatData.activeChatId];
-        if (activeChat.history.some(msg => msg.isTutorial)) return;
+        
+        // TENTO ŘÁDEK BYL ZAKOMENTOVÁN, ABY SE NÁPOVĚDA MOHLA ZOBRAZIT VÍCEKRÁT
+        // if (activeChat.history.some(msg => msg.isTutorial)) return; 
+        
         const tutorialMessage = {
             role: 'model',
             parts: [{

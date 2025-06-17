@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Assistant PRO</title>
+    <style>
+        /* Gemini-Inspired Dark Theme & Layout Overhaul */
+        :root {
+            --bg-dark-primary: #131314; --bg-dark-secondary: #1e1f20; --bg-element: #2d2e30;
+            --bg-element-hover: #3c3d3f; --text-primary: #e8eaed; --text-secondary: #9aa0a6;
+            --accent-purple: #c895ff; --accent-blue: #8ab4f8; --accent-red: #f28b82;
+            --border-color: #444; --font-main: 'Roboto', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        * { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--bg-element-hover) var(--bg-dark-secondary); }
+        body {
+            font-family: var(--font-main); margin: 0; display: flex; flex-direction: column;
+            height: 100vh; background-color: var(--bg-dark-secondary); color: var(--text-primary); overflow: hidden;
+        }
+        .app-header {
+            background-color: var(--bg-dark-primary); color: var(--text-primary); padding: 12px 25px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+            z-index: 100;
+        }
+        .app-header h1 { margin: 0; font-size: 1.5em; font-weight: 500; }
+        .app-header h1 .ai-badge {
+            font-size: 0.6em; color: var(--accent-purple); font-weight: 700; vertical-align: middle;
+            margin-left: 8px; border: 1px solid var(--accent-purple); padding: 2px 6px; border-radius: 8px;
+        }
+        .header-controls { display: flex; align-items: center; gap: 20px; }
+        #language-switcher { background-color: var(--bg-element); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; font-family: inherit; }
+        .tools-menu { position: relative; }
+        .tools-menu-btn { background-color: var(--bg-element); color: var(--text-primary); padding: 8px 15px; border: 1px solid var(--border-color); cursor:pointer; border-radius: 8px; }
+        .tools-menu-btn:hover { background-color: var(--bg-element-hover); }
+        .tools-menu-content {
+            display: none; position: absolute; right: 0; background-color: var(--bg-element);
+            min-width: 240px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.4);
+            z-index: 1100; border-radius: 6px; border: 1px solid var(--border-color); padding: 5px 0;
+        }
+        .tools-menu-content button {
+            color: var(--text-primary); padding: 12px 16px; text-decoration: none; display: block;
+            width: 100%; text-align: left; background: none; border: none; margin: 0; cursor: pointer;
+        }
+        .tools-menu-content button:hover { background-color: var(--accent-blue); color: var(--bg-dark-primary); }
+        .tools-menu:hover .tools-menu-content { display: block; }
+        hr.menu-separator { border: 0; border-top: 1px solid var(--border-color); margin: 5px 0; }
+
+        .editor-controls {
+            padding: 12px; background-color: var(--bg-dark-secondary); border-bottom: 1px solid var(--border-color);
+            text-align: center; display: none; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .container { display: flex; flex-grow: 1; overflow: hidden; }
+        .input-panel, .preview-panel { flex-shrink: 0; padding: 20px; overflow-y: auto; }
+        .input-panel { background-color: var(--bg-dark-secondary); flex-basis: 50%; transition: flex-basis 0.3s ease; }
+        .preview-panel { display: flex; flex-direction: column; flex-basis: 50%; transition: flex-basis 0.3s ease; }
+        .preview-panel iframe { width: 100%; height: 100%; border: 1px solid var(--border-color); background-color: white; box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); border-radius: 8px; }
+        
+        .container.fullscreen-preview .input-panel,
+        .container.fullscreen-preview .resizer { flex-basis: 0 !important; padding: 0; overflow: hidden; border: none; min-width: 0; }
+        .container.fullscreen-preview .preview-panel { flex-basis: 100% !important; }
+
+        fieldset { border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 25px; background-color: var(--bg-dark-primary); }
+        legend { font-weight: bold; color: var(--accent-blue); padding: 0 10px; font-size: 1.2em; }
+        
+        .versioned-field { position: relative; }
+        .version-history-btn { position: absolute; top: 0; right: 0; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.1em; padding: 5px; }
+        .version-history-btn:hover { color: var(--accent-purple); }
+
+        label { display: block; margin-top: 12px; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; color: var(--text-primary); }
+        label.required::after { content: ' *'; color: var(--accent-red); }
+        input[type="text"], input[type="number"], input[type="date"], textarea, select {
+            width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border-color);
+            border-radius: 6px; box-sizing: border-box; font-size: 1em; background-color: var(--bg-element);
+            color: var(--text-primary); transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, textarea:focus, select:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.3); outline: none; }
+        textarea { min-height: 80px; resize: vertical; }
+
+        .slogan-wrapper { position: relative; }
+        .slogan-bold-btn { position: absolute; top: 32px; right: 5px; background: var(--bg-element-hover); border: 1px solid var(--border-color); border-radius: 5px; color: var(--text-primary); cursor: pointer; font-weight: bold; width: 28px; height: 28px; font-size: 16px; }
+        .slogan-bold-btn:hover { background: var(--accent-blue); color: var(--bg-dark-primary); }
+
+        button, .button-like {
+            background-color: var(--accent-blue); color: var(--bg-dark-primary); padding: 10px 18px;
+            border: none; border-radius: 20px; cursor: pointer; font-size: 1em; font-weight: 700;
+            margin-top: 10px; text-decoration: none; display: inline-block; transition: background-color 0.2s, transform 0.1s;
+        }
+        button:hover, .button-like:hover { background-color: #a3c5fd; }
+        button:active { transform: scale(0.98); }
+        button:disabled { background-color: var(--bg-element-hover); color: var(--text-secondary); cursor: not-allowed; }
+        button.danger { background-color: var(--accent-red); }
+        button.danger:hover { background-color: #f6a199; }
+        button.secondary { background-color: var(--bg-element); color: var(--text-primary); }
+        button.secondary:hover { background-color: var(--bg-element-hover); }
+        #fill-with-ai-btn, #fill-aukro-with-ai-btn { width: 100%; margin-top: 15px; background-color: var(--accent-purple); color: var(--bg-dark-primary); }
+        #fill-with-ai-btn:hover, #fill-aukro-with-ai-btn:hover { background-color: #d7aeff; }
+
+        .spec-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+        .spec-row input[type="text"] { width: auto; flex-grow: 1; margin-bottom: 0; }
+        button.small-action { font-size: 0.8em; padding: 5px 8px; margin-left: 10px; margin-top: 0; vertical-align: middle; }
+
+        .page-content { display: none; height: 100%;}
+        .page-content.active { display: flex; width: 100%; }
+        .editor-controls.active { display: flex; }
+
+        .resizer {
+            flex-basis: 8px; flex-shrink: 0; background-color: transparent;
+            cursor: col-resize; transition: background-color 0.2s; position: relative;
+        }
+        .resizer:hover, .resizer.resizing { background-color: var(--accent-purple); }
+        .resizer::before { content: '⋮'; position: absolute; left: -1px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 20px; line-height: 0; }
+        
+        #contacts-page, #admin-page, #image-converter-page { flex-direction: column; overflow-y: auto; padding: 25px; }
+        .contacts-table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); }
+        .contacts-table th, .contacts-table td { border-bottom: 1px solid var(--border-color); padding: 14px; text-align: left; font-size: 0.9em; }
+        .contacts-table th { background-color: var(--bg-element); color: var(--accent-blue); font-weight: bold; }
+        .contacts-table tr:hover { background-color: var(--bg-element); }
+        .contacts-table tr.highlighted-row { background-color: rgba(138, 180, 248, 0.2) !important; font-weight: bold; }
+        .info-text { font-size: 0.9em; color: var(--text-secondary); text-align: center; margin-bottom: 20px; padding: 10px; background-color: var(--bg-dark-primary); border-left: 4px solid var(--accent-purple); border-radius: 4px; }
+        
+        #ai-chat-bubble-wrapper { position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; align-items: center; gap: 10px; background-color: rgba(29, 30, 32, 0.8); padding: 8px 15px 8px 8px; border-radius: 30px; backdrop-filter: blur(5px); border: 1px solid var(--border-color); }
+        #ai-chat-bubble { position: relative; bottom: 0; right: 0; width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue)); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: transform 0.2s ease-in-out; flex-shrink: 0; }
+        #ai-chat-bubble:hover { transform: scale(1.1); }
+        #ai-chat-bubble svg { width: 28px; height: 28px; }
+        #ai-chat-bubble-label { color: var(--text-primary); font-weight: 500; cursor: pointer; }
+
+        /* --- Modal Styles --- */
+        .modal-overlay {
+            display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.visible { display: flex; }
+        .modal-content { background-color: var(--bg-dark-primary); padding: 25px; border-radius: 12px; width: 90%; max-width: 700px; border: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        .modal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        #version-history-list { max-height: 60vh; overflow-y: auto; margin-top: 15px; }
+        .version-item { background: var(--bg-dark-secondary); padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--border-color); }
+        .version-item:hover { border-left-color: var(--accent-purple); }
+        .version-meta { font-size: 0.8em; color: var(--text-secondary); margin-bottom: 8px; }
+        .version-content { white-space: pre-wrap; }
+        .feedback-input-group { position: relative; margin-top: 8px; }
+        .feedback-input-group input { background-color: var(--bg-element) !important; }
+        .feedback-input-group button { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); margin-top: 0; padding: 5px 10px; font-size: 0.8em; }
+
+
+        /* --- Chat Modal Styles --- */
+        #ai-chat-modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+        }
+        #ai-chat-modal.visible { display: block; }
+
+        #ai-chat-modal.no-blur {
+            pointer-events: none;
+            background-color: transparent;
+            backdrop-filter: none;
+        }
+        #ai-chat-modal.no-blur .chat-container-modal {
+            pointer-events: auto;
+        }
+        #ai-chat-modal.maximized .chat-container-modal {
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            border-radius: 0;
+            transform: none;
+        }
+        
+        .chat-container-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 900px; height: 85vh; background-color: var(--bg-dark-primary); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; overflow: hidden; transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s; }
+        #chat-sidebar { flex-basis: 260px; flex-shrink: 0; background-color: var(--bg-dark-secondary); padding: 15px; display: flex; flex-direction: column; min-width: 200px; }
+        #new-chat-btn { width: 100%; margin: 0 0 15px 0; }
+        #chat-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow: 1; }
+        #chat-list li { padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; background-color: var(--bg-element); display: flex; justify-content: space-between; align-items: center; }
+        .chat-item-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+        #chat-list li:hover { background-color: var(--bg-element-hover); }
+        #chat-list li.active-chat { background-color: var(--accent-blue); color: var(--bg-dark-primary); font-weight: bold; }
+        .chat-item-controls button { background: none; border: none; color: var(--text-secondary); padding: 2px; margin: 0 0 0 5px; cursor: pointer; border-radius: 4px; display: none; }
+        #chat-list li:hover .chat-item-controls button { display: inline-block; }
+        #chat-list li.active-chat .chat-item-controls button { color: var(--bg-dark-primary); }
+        .chat-item-controls button:hover { background-color: rgba(255,255,255,0.2); }
+
+        #chat-main { flex-grow: 1; display: flex; flex-direction: column; height: 100%; }
+        #chat-page-header { padding: 15px 20px; border-bottom: 1px solid var(--border-color); font-size: 1.2em; font-weight: bold; color: var(--text-primary); text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: move; }
+        #chat-header-controls { display: flex; align-items: center; gap: 15px; cursor: default; }
+        #chat-header-controls .control-btn { background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer; line-height: 1; padding: 0; transition: color 0.2s; }
+        #chat-header-controls .control-btn:hover { color: var(--text-primary); }
+        
+        #chat-container { flex-grow: 1; overflow-y: auto; padding: 20px; }
+        .chat-message { max-width: 90%; margin-bottom: 20px; padding: 15px 20px; border-radius: 18px; line-height: 1.6; word-wrap: break-word; position: relative; }
+        .user-message { background-color: var(--bg-element); margin-left: auto; border-bottom-right-radius: 4px; }
+        .model-message { background-color: #2a2b2e; margin-right: auto; white-space: pre-wrap; border-bottom-left-radius: 4px; }
+        .model-message pre { background-color: #131314; padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border-color); }
+        .model-message code { font-family: 'Courier New', Courier, monospace; }
+        .model-message strong { color: var(--accent-purple); }
+        .error-message { background-color: rgba(242, 139, 130, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+        
+        .insert-text-btn { position: absolute; bottom: 5px; right: 5px; background-color: var(--accent-purple); color: var(--bg-dark-primary); border: none; border-radius: 5px; padding: 3px 8px; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+        .model-message:hover .insert-text-btn { opacity: 1; }
+        .insert-text-menu { display: none; position: absolute; background-color: var(--bg-element); border: 1px solid var(--border-color); border-radius: 6px; z-index: 1060; padding: 5px 0; min-width: 150px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .insert-text-menu button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: none; color: var(--text-primary); cursor: pointer; font-size: 14px; }
+        .insert-text-menu button:hover { background-color: var(--accent-blue); color: var(--bg-dark-primary); }
+
+        #chat-input-area { display: flex; flex-direction: column; gap: 10px; padding: 20px; border-top: 1px solid var(--border-color); }
+        #image-preview-container { display: none; align-items: center; gap: 10px; padding: 8px; background-color: var(--bg-element); border-radius: 8px; }
+        #image-preview-container img { max-height: 50px; border-radius: 4px; }
+        #image-preview-container span { font-size: 0.9em; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #remove-image-btn { background: none; border: none; color: var(--accent-red); font-size: 1.5em; cursor: pointer; padding: 0 5px; }
+        .chat-input-row { display: flex; gap: 10px; }
+        .chat-input-row textarea { flex-grow: 1; min-height: 50px; height: 50px; margin-bottom: 0; resize: none; }
+        .chat-input-row button { margin-top: 0; height: 50px; border-radius: 8px; padding: 0 25px; flex-shrink: 0; }
+        #upload-image-btn { padding: 0 15px; font-size: 1.5em; }
+        #upload-image-input { display: none; }
+        
+        .tool-container { background-color: var(--bg-dark-primary); padding: 30px; border-radius: 12px; width: 100%; max-width: 800px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); margin: 0 auto; }
+        .tool-container h2 { margin-top: 0; color: var(--accent-blue); }
+        .tool-row { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; }
+        .tool-row > * { flex: 1; }
+        .tool-explainer { font-size: 0.9em; color: var(--text-secondary); text-align: left; margin-top: 25px; padding: 15px; background-color: var(--bg-element); border-radius: 8px; border-left: 3px solid var(--accent-blue); }
+        .tool-explainer p { margin: 0 0 10px 0; }
+        .tool-explainer p:last-child { margin-bottom: 0; }
+        .tool-explainer code { background-color: var(--bg-dark-secondary); padding: 2px 5px; border-radius: 4px; }
+
+        /* Currency Converter Styles */
+        #converter-page { justify-content: center; }
+        #converter-last-updated { font-size: 0.8em; color: var(--text-secondary); margin-top: 15px; }
+
+        /* Image Converter Styles */
+        #image-converter-page { justify-content: center; }
+        #image-converter-preview { max-width: 100%; max-height: 200px; margin-top: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
+        
+        /* Invoice Generator Styles */
+        #invoice-generator-page { overflow-y: auto; padding: 20px; }
+        .invoice-wrapper { display: flex; gap: 20px; width: 100%; height: 100%; }
+        .invoice-inputs { flex: 1; overflow-y: auto; padding-right: 15px; max-width: 500px; }
+        .invoice-preview-container { flex: 2; display: flex; flex-direction: column; }
+        .invoice-preview-controls { margin-bottom: 10px; display: flex; gap: 10px; justify-content: flex-end; }
+        #invoice-preview-iframe { width: 100%; height: 100%; border: 1px solid var(--border-color); background-color: white; }
+        .invoice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        #invoice-items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        #invoice-items-table th, #invoice-items-table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-color); }
+        #invoice-items-table input { margin: 0; }
+
+        /* Welcome Screen */
+        #welcome-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 2000; align-items: center; justify-content: center; color: var(--text-primary); }
+        #welcome-screen.visible { display: flex; }
+        .welcome-box { background: var(--bg-dark-primary); padding: 40px; border-radius: 15px; width: 90%; max-width: 700px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid var(--border-color); }
+        .welcome-box h2 { color: var(--accent-blue); font-size: 2em; margin-top: 0; }
+        .welcome-box p { color: var(--text-secondary); line-height: 1.7; margin-bottom: 25px; }
+        .welcome-box a { color: var(--accent-purple); text-decoration: none; }
+        .welcome-box a:hover { text-decoration: underline; }
+        #api-key-input-welcome { text-align: center; font-size: 1.1em; margin-top: 10px; }
+        .update-log { text-align: left; max-height: 200px; overflow-y: auto; background: var(--bg-dark-secondary); padding: 15px; border-radius: 8px; margin: 25px 0; font-size: 0.9em; border: 1px solid var(--border-color); }
+        .update-log h4 { margin-top: 0; color: var(--accent-purple); }
+        .update-log ul { padding-left: 20px; margin: 0; }
+        .update-log li { margin-bottom: 5px; }
+        .welcome-actions { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 20px; }
+        #api-key-error { color: var(--accent-red); margin-top: 10px; display: none; }
+
+        .action-buttons-container { display: flex; gap: 10px; flex-wrap: wrap; padding: 0 20px 20px; }
+        .action-btn { background-color: var(--bg-element); color: var(--text-primary); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 8px; font-size: 0.9em; cursor: pointer; margin: 0; }
+        .action-btn:hover { background-color: var(--bg-element-hover); border-color: var(--accent-blue); }
+
+        @media (max-width: 900px) {
+            .invoice-wrapper { flex-direction: column; }
+            .invoice-inputs { max-width: 100%; padding-right: 0; }
+        }
+        @media (max-width: 768px) {
+            .container, .chat-container-modal { flex-direction: column; }
+            .input-panel, .preview-panel { flex-basis: auto !important; width: 100% !important; }
+            .resizer { display: none; }
+            .chat-container-modal { height: 95vh; width: 100%; border-radius: 0; top: 0; left: 0; transform: none; }
+            #chat-sidebar { height: 250px; border-bottom: 1px solid var(--border-color); }
+            #ai-chat-bubble-label { display: none; }
+            .modal-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container" style="display: flex; flex-direction: column; height: 100vh; visibility: hidden;">
+        <div class="app-header">
+            <h1>AI Content Assistant <span class="ai-badge">PRO v1.5.1</span></h1>
+            <div class="header-controls">
+                <select id="language-switcher">
+                    <option value="cs">Čeština</option>
+                    <option value="en">English</option>
+                </select>
+                <div class="tools-menu">
+                    <button class="tools-menu-btn" data-lang-key="toolsMenu">Další nástroje</button>
+                    <div class="tools-menu-content">
+                        <button onclick="showPage('editor')" data-lang-key="ebayEditorMenu">eBay Editor (EN)</button>
+                        <button onclick="showPage('aukro-editor')" data-lang-key="aukroEditorMenu">Aukro Editor (CZ)</button>
+                        <hr class="menu-separator">
+                        <button onclick="showPage('invoice-generator')" data-lang-key="invoiceGeneratorMenu">Generátor Faktur</button>
+                        <button onclick="showPage('image-converter')" data-lang-key="imageConverterMenu">Převodník Obrázků</button>
+                        <button onclick="showPage('converter')" data-lang-key="converterMenu">Převodník Měn</button>
+                        <hr class="menu-separator">
+                        <button onclick="showPage('contacts')" data-lang-key="contactsMenu">Kontakty Firem</button>
+                        <button onclick="showPage('admin')" data-lang-key="adminMenu">Nastavení (Admin)</button>
+                        <hr class="menu-separator">
+                        <button onclick="showFeedbackModal()" data-lang-key="feedbackMenu">Poskytnout Feedback</button>
+                        <button onclick="window.open('https://www.paypal.me/lukas180', '_blank')" data-lang-key="supportMenu">Podpořit Autora ❤️</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="editor-controls" id="editor-page-controls">
+            <button onclick="copyEbayHtmlToClipboard()" data-lang-key="copyHtml">Kopírovat HTML</button>
+            <button onclick="downloadTemplate('ebay')" data-lang-key="downloadHtml">Stáhnout HTML</button>
+            <button onclick="setupEditor('ebay', true)" data-lang-key="resetTemplate">Resetovat Šablonu</button>
+            <button class="secondary" onclick="toggleFullscreenPreview('ebay')" data-lang-key="maximizePreview">Maximalizovat náhled</button>
+            <button class="danger" onclick="clearEbayFieldsAndStorage()" data-lang-key="clearFields">Vymazat Pole & Data</button>
+        </div>
+        <div class="editor-controls" id="aukro-editor-page-controls">
+            <button onclick="copyAukroHtmlToClipboard()" data-lang-key="copyHtml">Kopírovat HTML</button>
+            <button onclick="downloadTemplate('aukro')" data-lang-key="downloadHtml">Stáhnout HTML</button>
+            <button onclick="setupEditor('aukro', true)" data-lang-key="resetTemplate">Resetovat Šablonu</button>
+            <button class="secondary" onclick="toggleFullscreenPreview('aukro')" data-lang-key="maximizePreview">Maximalizovat náhled</button>
+            <button class="danger" onclick="clearAukroFieldsAndStorage()" data-lang-key="clearFields">Vymazat Pole & Data</button>
+        </div>
+
+        <div class="container">
+            <div class="page-content" id="ebay-editor-page-wrapper">
+                <div class="input-panel" id="editor-page-input">
+                    <fieldset><legend data-lang-key="productInfo">Product Information</legend>
+                        <div class="versioned-field">
+                            <label for="input_product_name" class="required" data-lang-key="productName">Product Name:</label>
+                            <button class="version-history-btn" data-lang-key-title="historyTitle" title="Historie změn">🕖</button>
+                            <input type="text" id="input_product_name" data-lang-key-placeholder="productNamePlaceholder" placeholder="e.g., UltraFast SSD Drive 1TB">
+                        </div>
+                        <div>
+                            <label for="input_product_ean" data-lang-key="eanLabel">EAN / UPC (doporučeno pro přesnost AI):</label>
+                            <input type="text" id="input_product_ean" placeholder="e.g., 190199098494">
+                        </div>
+                        <div>
+                            <label for="input_product_pn_sku" data-lang-key="pnLabel">Part Number (PN) / SKU (doporučeno pro přesnost AI):</label>
+                            <input type="text" id="input_product_pn_sku" placeholder="e.g., MME73ZM/A">
+                        </div>
+                        <button type="button" id="fill-with-ai-btn" data-lang-key="fillWithAI">Vyplnit vše pomocí AI</button>
+                        <div class="versioned-field slogan-wrapper">
+                            <label for="input_slogan" data-lang-key="sloganLabel">Slogan (HTML supported):</label>
+                            <button class="version-history-btn" data-lang-key-title="historyTitle" title="Historie změn">🕖</button>
+                            <button id="slogan-bold-btn" data-lang-key-title="boldTitle" title="Tučný text">Zvýrazni označený text</button>
+                            <textarea id="input_slogan" placeholder="e.g., <strong>The ultimate speed for your data!</strong>"></textarea>
+                        </div>
+                        <div class="versioned-field">
+                            <label for="input_overview" class="required" data-lang-key="overviewLabel">Brief Product Overview:</label>
+                            <button class="version-history-btn" data-lang-key-title="historyTitle" title="Historie změn">🕖</button>
+                            <textarea id="input_overview" data-lang-key-placeholder="overviewPlaceholder" placeholder="Describe key features, connectivity options, and usage scenarios."></textarea>
+                        </div>
+                    </fieldset>
+                    <fieldset><legend data-lang-key="featuresSpecs">Features & Specifications</legend>
+                        <div class="versioned-field">
+                            <label for="input_features" class="required" data-lang-key="keyFeaturesLabel">Key Features (one per line):</label>
+                            <button class="version-history-btn" data-lang-key-title="historyTitle" title="Historie změn">🕖</button>
+                            <textarea id="input_features" data-lang-key-placeholder="keyFeaturesPlaceholder" placeholder="High read/write speed\nLow power consumption\nDurable construction"></textarea>
+                        </div>
+                        <div>
+                            <label data-lang-key="techSpecsLabel">Technical Specifications:</label>
+                            <div id="tech_specs_editor_area"></div>
+                            <button type="button" class="secondary" onclick="addEbayTechSpecRow()" data-lang-key="addSpec">_ Add Specification</button>
+                        </div>
+                    </fieldset>
+                    <fieldset><legend data-lang-key="additionalInfo">Additional Information</legend>
+                        <div class="versioned-field">
+                            <label for="input_compatibility" class="required" data-lang-key="compatibilityLabel">Compatibility (one per line):</label>
+                            <button class="version-history-btn" data-lang-key-title="historyTitle" title="Historie změn">🕖</button>
+                            <textarea id="input_compatibility" data-lang-key-placeholder="compatibilityPlaceholder" placeholder="Windows 10/11\nmacOS Ventura and newer\nLinux kernel 5.x"></textarea>
+                        </div>
+                        <div class="versioned-field">
+                            <label for="input_note_text" class="required" data-lang-key="noteLabel">Note Text:</label>
+                            <button class="version-history-btn" data-lang-key-title="historyTitle" title="Historie změn">🕖</button>
+                            <textarea id="input_note_text" data-lang-key-placeholder="notePlaceholder" placeholder="Add important warnings or additional information here."></textarea>
+                        </div>
+                        <label for="input_footer_year" class="required" data-lang-key="footerYearLabel">Footer Year:</label>
+                        <input type="text" id="input_footer_year" placeholder="2025" value="2025">
+                        <label for="input_footer_company_name" class="required" data-lang-key="footerCompanyLabel">Footer Company Name:</label>
+                        <input type="text" id="input_footer_company_name" data-lang-key-placeholder="footerCompanyPlaceholder" placeholder="Your Company LLC">
+                    </fieldset>
+                </div>
+                <div class="resizer" id="resizer-ebay"></div>
+                <div class="preview-panel" id="preview-panel-ebay"><iframe id="previewFrameEbay"></iframe></div>
+            </div>
+            
+            <div class="page-content" id="aukro-editor-page-wrapper">
+                <div class="input-panel" id="aukro-editor-page-input">
+                    <fieldset><legend data-lang-key="mainInfoAukro">Hlavní Informace</legend>
+                        <label for="input_aukro_product_name" class="required" data-lang-key="productNameAukro">Název produktu:</label>
+                        <input type="text" id="input_aukro_product_name" data-lang-key-placeholder="productNameAukroPlaceholder" placeholder="Zadejte název produktu">
+                        <button type="button" id="fill-aukro-with-ai-btn" data-lang-key="fillWithAI">Vyplnit vše pomocí AI</button>
+                        <label for="input_aukro_description" class="required" data-lang-key="descriptionAukro">Popis produktu:</label>
+                        <textarea id="input_aukro_description" data-lang-key-placeholder="descriptionAukroPlaceholder" placeholder="Uveďte podrobnosti o produktu."></textarea>
+                    </fieldset>
+                    <fieldset><legend data-lang-key="specsCompatAukro">Specifikace a Kompatibilita</legend>
+                        <div><label data-lang-key="techSpecsAukro">Technické parametry:</label><div id="aukro_tech_specs_editor_area"></div><button type="button" class="secondary" onclick="addAukroTechSpecRow()" data-lang-key="addParamAukro">+ Přidat parametr</button></div>
+                        <label for="input_aukro_compatibility" style="margin-top:15px;" class="required" data-lang-key="compatAukro">Kompatibilita:</label>
+                        <textarea id="input_aukro_compatibility" data-lang-key-placeholder="compatAukroPlaceholder" placeholder="Uveďte informace o kompatibilitě."></textarea>
+                        <label for="input_aukro_note" class="required" data-lang-key="noteAukro">Poznámka:</label>
+                        <textarea id="input_aukro_note" data-lang-key-placeholder="noteAukroPlaceholder" placeholder="Sem můžete přidat doplňující poznámky."></textarea>
+                    </fieldset>
+                </div>
+                <div class="resizer" id="resizer-aukro"></div>
+                <div class="preview-panel" id="preview-panel-aukro"><iframe id="previewFrameAukro"></iframe></div>
+            </div>
+            
+            <div class="page-content" id="contacts-page">
+                <div style="max-width: 1200px; margin: 0 auto; width: 100%;">
+                    <div class="info-text" style="text-align: left;"><p data-lang-key="contactsWarning"><strong>AI může dělat chyby (i co se týče lidí), takže všechno kontrolujte.</strong> Nově přidané kontakty se ukládají lokálně.</p></div>
+                    <fieldset>
+                        <legend data-lang-key="addContactAI">Přidat kontakt pomocí AI</legend>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="ai-contact-search" data-lang-key-placeholder="addContactAIPlaceholder" placeholder="Zadejte název firmy (např. 'NVIDIA')" style="margin-bottom: 0;">
+                            <button id="ai-contact-btn" style="margin-top: 0;" data-lang-key="search">Hledat</button>
+                        </div>
+                    </fieldset>
+                    <table class="contacts-table">
+                        <thead><tr><th data-lang-key="contactName">Název firmy</th><th data-lang-key="contactCountry">Země/Region</th><th data-lang-key="contactStreet">Ulice a č.p.</th><th data-lang-key="contactCity">Město</th><th data-lang-key="contactZip">PSČ</th><th data-lang-key="contactState">Stát/Provincie</th><th data-lang-key="contactPhone">Telefon</th><th>E-mail</th><th data-lang-key="contactUrl">URL kontaktu</th><th data-lang-key="contactActions">Akce</th></tr></thead>
+                        <tbody id="contacts-table-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="page-content" id="converter-page">
+                <div class="tool-container">
+                    <h2 data-lang-key="converterTitle">Převodník Měn</h2>
+                    <p style="color: var(--text-secondary); margin-top: -10px; margin-bottom: 25px;" data-lang-key="converterSubtitle">Zadejte částku a vyberte měnu pro okamžitý přepočet na hlavní světové měny.</p>
+                    <div class="tool-row">
+                        <input type="number" id="converter-amount" value="100">
+                        <select id="converter-from"></select>
+                    </div>
+                    <div id="converter-results-box" style="margin-top: 30px; text-align: left; border-top: 1px solid var(--border-color); paddingTop: 20px;">
+                        <p style="font-size: 1.4em; color: var(--text-primary); margin: 10px 0; background-color: var(--bg-element); padding: 15px; border-radius: 8px;"><strong style="color: var(--accent-blue);">USD: </strong><span id="result-usd">-</span></p>
+                        <p style="font-size: 1.4em; color: var(--text-primary); margin: 10px 0; background-color: var(--bg-element); padding: 15px; border-radius: 8px;"><strong style="color: var(--accent-blue);">EUR: </strong><span id="result-eur">-</span></p>
+                        <p style="font-size: 1.4em; color: var(--text-primary); margin: 10px 0; background-color: var(--bg-element); padding: 15px; border-radius: 8px;"><strong style="color: var(--accent-blue);">GBP: </strong><span id="result-gbp">-</span></p>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <button id="update-rates-btn" class="secondary" style="margin-top: 0;" data-lang-key="updateRate">Updatuj dnešní kurz</button>
+                        <div id="converter-last-updated"></div>
+                    </div>
+                    <div class="tool-explainer">
+                        <p><strong data-lang-key="howItWorks">Jak to funguje?</strong></p>
+                        <p data-lang-key="converterDesc1">Tento nástroj používá data z <code>Frankfurter.app</code>, což je open-source služba poskytující kurzy měn od Evropské centrální banky. Data jsou aktualizována jednou denně.</p>
+                        <p data-lang-key="converterDesc2">Tlačítko <strong data-lang-key="updateRate2">"Updatuj dnešní kurz"</strong> manuálně načte nejnovější dostupné denní kurzy. Po kliknutí jsou nová data k dispozici okamžitě. Aplikace si automaticky načte čerstvá data i při každém spuštění.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-content" id="image-converter-page">
+                 <div class="tool-container">
+                    <h2 data-lang-key="imageConverterTitle">Převodník Obrázků</h2>
+                    <p style="color: var(--text-secondary); margin-top: -10px; margin-bottom: 25px;" data-lang-key="imageConverterSubtitle">Nahrajte obrázek, zvolte formát a kvalitu, a stáhněte si výsledek.</p>
+                    <fieldset>
+                        <legend data-lang-key="imageConverterInput">Vstup</legend>
+                        <label for="image-converter-upload" class="button-like secondary" style="width: 100%; text-align: center;" data-lang-key="imageConverterUpload">Vybrat obrázek</label>
+                        <input type="file" id="image-converter-upload" accept="image/*" style="display: none;">
+                        <img id="image-converter-preview" src="" alt="Image preview" style="display:none;">
+                        <p id="image-converter-info" style="text-align: center; margin-top: 10px;"></p>
+                    </fieldset>
+                    <fieldset>
+                        <legend data-lang-key="imageConverterSettings">Nastavení výstupu</legend>
+                        <div class="tool-row">
+                            <div>
+                                <label for="image-converter-format" data-lang-key="imageConverterFormat">Formát:</label>
+                                <select id="image-converter-format">
+                                    <option value="image/jpeg">JPEG</option>
+                                    <option value="image/png">PNG</option>
+                                    <option value="image/webp">WEBP</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="image-converter-quality" data-lang-key="imageConverterQuality">Kvalita (pro JPEG/WEBP):</label>
+                                <input type="range" id="image-converter-quality" min="0.1" max="1.0" value="0.9" step="0.1">
+                            </div>
+                        </div>
+                    </fieldset>
+                    <button id="image-converter-download-btn" disabled data-lang-key="downloadImage">Stáhnout obrázek</button>
+                    <div class="tool-explainer">
+                        <p><strong data-lang-key="howItWorks">Jak to funguje?</strong></p>
+                        <p data-lang-key="imageConverterDesc">Celá konverze probíhá bezpečně pouze ve vašem prohlížeči. Obrázek se nikam neodesílá. Vyberte obrázek, nastavte požadovaný formát a kvalitu a klikněte na tlačítko pro stažení.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-content" id="invoice-generator-page">
+                <div class="invoice-wrapper">
+                    <div class="invoice-inputs">
+                        <fieldset>
+                            <legend data-lang-key="invoiceSettings">Nastavení</legend>
+                             <div class="tool-row">
+                                <button id="invoice-print-btn" data-lang-key="invoicePrint">Tisk / Uložit jako PDF</button>
+                                <select id="invoice-lang-select">
+                                    <option value="cs">Čeština</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                        </fieldset>
+                        <fieldset>
+                            <legend data-lang-key="invoiceSeller">Dodavatel (Vy)</legend>
+                            <div class="invoice-grid">
+                                <div><label for="invoice-seller-name" data-lang-key="invoiceName">Název firmy</label><input type="text" id="invoice-seller-name" class="invoice-input"></div>
+                                <div><label for="invoice-seller-id" data-lang-key="invoiceId">IČO</label><input type="text" id="invoice-seller-id" class="invoice-input"></div>
+                                <div><label for="invoice-seller-vat" data-lang-key="invoiceVat">DIČ</label><input type="text" id="invoice-seller-vat" class="invoice-input"></div>
+                                <div><label for="invoice-seller-address" data-lang-key="invoiceAddress">Adresa</label><input type="text" id="invoice-seller-address" class="invoice-input"></div>
+                                <div><label for="invoice-seller-bank" data-lang-key="invoiceBank">Banka</label><input type="text" id="invoice-seller-bank" class="invoice-input"></div>
+                                <div><label for="invoice-seller-account" data-lang-key="invoiceAccount">Číslo účtu</label><input type="text" id="invoice-seller-account" class="invoice-input"></div>
+                            </div>
+                        </fieldset>
+                         <fieldset>
+                            <legend data-lang-key="invoiceBuyer">Odběratel (Klient)</legend>
+                            <div class="invoice-grid">
+                                <div><label for="invoice-buyer-name" data-lang-key="invoiceName">Název firmy</label><input type="text" id="invoice-buyer-name" class="invoice-input"></div>
+                                <div><label for="invoice-buyer-id" data-lang-key="invoiceId">IČO</label><input type="text" id="invoice-buyer-id" class="invoice-input"></div>
+                                <div><label for="invoice-buyer-vat" data-lang-key="invoiceVat">DIČ</label><input type="text" id="invoice-buyer-vat" class="invoice-input"></div>
+                                <div><label for="invoice-buyer-address" data-lang-key="invoiceAddress">Adresa</label><input type="text" id="invoice-buyer-address" class="invoice-input"></div>
+                            </div>
+                        </fieldset>
+                        <fieldset>
+                            <legend data-lang-key="invoiceDetails">Detaily Faktury</legend>
+                            <div class="invoice-grid">
+                                <div><label for="invoice-number" data-lang-key="invoiceNumber">Číslo faktury</label><input type="text" id="invoice-number" class="invoice-input"></div>
+                                <div><label for="invoice-issue-date" data-lang-key="invoiceIssueDate">Datum vystavení</label><input type="date" id="invoice-issue-date" class="invoice-input"></div>
+                                <div><label for="invoice-due-date" data-lang-key="invoiceDueDate">Datum splatnosti</label><input type="date" id="invoice-due-date" class="invoice-input"></div>
+                                <div><label for="invoice-currency" data-lang-key="invoiceCurrency">Měna</label><input type="text" id="invoice-currency" value="CZK" class="invoice-input"></div>
+                            </div>
+                        </fieldset>
+                        <fieldset>
+                            <legend data-lang-key="invoiceItems">Položky</legend>
+                            <table id="invoice-items-table">
+                               <thead><tr><th data-lang-key="invoiceItemDesc">Popis</th><th data-lang-key="invoiceItemQty">Množství</th><th data-lang-key="invoiceItemPrice">Cena/ks</th><th data-lang-key="invoiceItemTotal">Celkem</th><th></th></tr></thead>
+                               <tbody id="invoice-items-tbody"></tbody>
+                            </table>
+                            <button id="invoice-add-item-btn" class="secondary" data-lang-key="invoiceAddItem">+ Přidat položku</button>
+                        </fieldset>
+                    </div>
+                    <div class="invoice-preview-container">
+                        <iframe id="invoice-preview-iframe"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-content" id="admin-page">
+                <div style="max-width: 900px; margin: 0 auto; width: 100%;">
+                    <fieldset>
+                        <legend data-lang-key="backupRestoreTitle">Záloha & Obnova Dat Aplikace</legend>
+                        <p style="color: var(--text-secondary); font-size: 0.9em;" data-lang-key="backupRestoreDesc">Zde si můžete stáhnout zálohu všech vašich dat (chaty, uložené kontakty, nastavení šablon) do jednoho souboru. Tento soubor pak můžete použít k obnově dat, například při přechodu na nový počítač nebo po aktualizaci aplikace.</p>
+                        <div style="display: flex; gap: 15px; margin-top: 15px;">
+                            <button id="backup-data-btn" data-lang-key="downloadBackup">Stáhnout Zálohu</button>
+                            <label for="restore-data-input" class="button-like secondary" data-lang-key="uploadBackup">Načíst Zálohu</label>
+                            <input type="file" id="restore-data-input" accept=".json" style="display: none;">
+                        </div>
+                    </fieldset>
+                    <div class="info-text" style="text-align: left;"><p><strong data-lang-key="adminTitle">Nastavení eBay Šablony (Admin)</strong></p><p data-lang-key="adminDesc">Zde můžete upravit statické texty, které se zobrazují ve vaší eBay šabloně. Změny se projeví po uložení a obnovení náhledu eBay editoru.</p></div>
+                    <fieldset><legend data-lang-key="adminMainSections">Hlavní Sekce</legend><label for="input_admin_header_features" data-lang-key="adminHeaderFeatures">Nadpis sekce "Key Features":</label><input type="text" id="input_admin_header_features"><label for="input_admin_header_specs" data-lang-key="adminHeaderSpecs">Nadpis sekce "Technical Specifications":</label><input type="text" id="input_admin_header_specs"><label for="input_admin_header_compat" data-lang-key="adminHeaderCompat">Nadpis sekce "Compatibility":</label><input type="text" id="input_admin_header_compat"><label for="input_admin_header_note" data-lang-key="adminHeaderNote">Nadpis sekce "Note":</label><input type="text" id="input_admin_header_note"></fieldset>
+                    <fieldset><legend data-lang-key="adminInfoSections">Informační Sekce</legend><label for="input_admin_header_shipping" data-lang-key="adminHeaderShipping">Nadpis sekce "Shipping":</label><input type="text" id="input_admin_header_shipping"><label for="input_admin_text_shipping" data-lang-key="adminTextShipping">Text odstavce "Shipping":</label><textarea id="input_admin_text_shipping" rows="4"></textarea><label for="input_admin_header_returns" data-lang-key="adminHeaderReturns">Nadpis sekce "Returns":</label><input type="text" id="input_admin_header_returns"><label for="input_admin_text_returns" data-lang-key="adminTextReturns">Text odstavce "Returns":</label><textarea id="input_admin_text_returns" rows="4"></textarea><label for="input_admin_header_contact" data-lang-key="adminHeaderContact">Nadpis sekce "Contact Us":</label><input type="text" id="input_admin_header_contact"><label for="input_admin_text_contact" data-lang-key="adminTextContact">Text odstavce "Contact Us":</label><textarea id="input_admin_text_contact" rows="4"></textarea><label for="input_admin_header_about" data-lang-key="adminHeaderAbout">Nadpis sekce "About Us":</label><input type="text" id="input_admin_header_about"><label for="input_admin_text_about" data-lang-key="adminTextAbout">Text odstavce "About Us":</label><textarea id="input_admin_text_about" rows="4"></textarea></fieldset>
+                    <fieldset><legend data-lang-key="adminTickerSection">Běžící lišta (Ticker)</legend><label for="input_admin_header_ticker" data-lang-key="adminTickerHeader">Nadpis lišty:</label><input type="text" id="input_admin_header_ticker"><label for="input_admin_text_ticker" data-lang-key="adminTickerText">Text v liště (jednotlivé položky oddělujte "•"):</label><textarea id="input_admin_text_ticker" rows="3"></textarea><label for="input_admin_text_disclaimer" data-lang-key="adminTickerDisclaimer">Doplňující text pod lištou (Disclaimer):</label><input type="text" id="input_admin_text_disclaimer"></fieldset>
+                    <div style="text-align: right;"><button id="save-admin-settings-btn" data-lang-key="saveChanges">Uložit Změny</button><button id="reset-admin-settings-btn" class="danger" data-lang-key="resetToDefault">Resetovat na Výchozí</button></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="ai-chat-bubble-wrapper">
+            <div id="ai-chat-bubble">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6-.097 1.016-.417 2.13-.771 2.966-.079.186.074.394.273.362 2.256-.67 3.597-2.298 4.227-3.26.902.37 1.93.596 3.004.596z"/></svg>
+            </div>
+            <span id="ai-chat-bubble-label" data-lang-key="aiAssistant">AI Pomocník</span>
+        </div>
+
+        <div id="ai-chat-modal">
+            <div class="chat-container-modal">
+                <div id="chat-sidebar">
+                    <button id="new-chat-btn" data-lang-key="newConversation">+ Nová konverzace</button>
+                    <button id="show-help-btn" class="secondary" style="width:100%; margin-top: 5px;" data-lang-key="showHelp">Zobrazit Nápovědu</button>
+                    <ul id="chat-list"></ul>
+                </div>
+                <div class="resizer" id="resizer-chat"></div>
+                <div id="chat-main">
+                    <div id="chat-page-header">
+                        <span id="chat-title-header"></span>
+                        <div id="chat-header-controls">
+                            <button class="control-btn" id="refresh-chat-btn" data-lang-key-title="refreshChatTitle" title="Obnovit chat"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg></button>
+                            <button class="control-btn" id="toggle-maximize-btn" data-lang-key-title="maximizeChatTitle" title="Zvětšit/Zmenšit okno"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5h1V.5a.5.5 0 0 1 .5-.5h10zM2 2v12h12V2H2z"/></svg></button>
+                            <button class="control-btn" id="toggle-blur-btn" data-lang-key-title="toggleBlurTitle" title="Přepnout rozmazání a interakci pozadí"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.94 5.94 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.288.822.822a2.5 2.5 0 0 1-2.829-2.829l-.823-.823a3.5 3.5 0 0 0 2.83 2.83z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 6.884-12-12 .708-.708 12 12-.708.708z"/></svg></button>
+                            <button class="control-btn close-chat-btn" data-lang-key-title="closeChatTitle" title="Zavřít chat">×</button>
+                        </div>
+                    </div>
+                    <div id="chat-container"></div>
+                    <div id="chat-input-area">
+                        <div id="image-preview-container"><img id="image-preview" src="" alt="Image Preview"><span id="image-preview-filename"></span><button id="remove-image-btn">×</button></div>
+                        <div class="chat-input-row"><textarea id="chat-input" data-lang-key-placeholder="chatPlaceholder" placeholder="Zeptejte se na cokoliv..." rows="1"></textarea><button id="upload-image-btn" data-lang-key-title="uploadImageTitle" title="Nahrát obrázek">📎</button><input type="file" id="upload-image-input" accept="image/*"><button id="send-chat-btn" data-lang-key="send">Odeslat</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="version-history-modal" class="modal-overlay"><div class="modal-content"><h2 id="version-history-title" data-lang-key="historyModalTitle">Historie Změn</h2><div id="version-history-list"></div><button class="secondary" style="margin-top: 20px;" onclick="document.getElementById('version-history-modal').classList.remove('visible')" data-lang-key="close">Zavřít</button></div></div>
+        
+        <div id="feedback-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h2 style="color: var(--accent-purple);" data-lang-key="feedbackModalTitle">Poskytnout Feedback</h2>
+                <p data-lang-key="feedbackModalDesc">Vaše zpětná vazba je pro mě nesmírně důležitá a pomáhá mi aplikaci vylepšovat. Děkuji!</p>
+                
+                <label for="feedback-email-input" data-lang-key="feedbackModalEmailLabel">Moje emailová adresa:</label>
+                <div class="feedback-input-group">
+                    <input type="text" id="feedback-email-input" value="lukaspistek666@gmail.com" readonly>
+                    <button id="copy-email-btn" onclick="copyToClipboard('feedback-email-input', this)" data-lang-key="copy">Kopírovat</button>
+                </div>
+
+                <label for="feedback-subject-input" data-lang-key="feedbackModalSubjectLabel">Doporučený předmět:</label>
+                 <div class="feedback-input-group">
+                    <input type="text" id="feedback-subject-input" value="Feedback k AI Content Assistant PRO" readonly>
+                    <button onclick="copyToClipboard('feedback-subject-input', this)" data-lang-key="copy">Kopírovat</button>
+                </div>
+                
+                <p style="margin-top: 20px;" data-lang-key="feedbackModalInstructions">Prosím, otevřete svého emailového klienta, vložte adresu a napište mi své nápady, návrhy nebo hlášení chyb.</p>
+                <button class="secondary" style="margin-top: 20px;" onclick="document.getElementById('feedback-modal').classList.remove('visible')" data-lang-key="close">Zavřít</button>
+            </div>
+        </div>
+
+        <div id="edit-contact-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h2 id="edit-contact-title" data-lang-key="editContactTitle">Upravit Kontakt</h2>
+                <div class="modal-grid">
+                    <div><label data-lang-key="contactName">Název firmy</label><input type="text" id="edit-contact-name"></div>
+                    <div><label data-lang-key="contactCountry">Země/Region</label><input type="text" id="edit-contact-country"></div>
+                    <div><label data-lang-key="contactStreet">Ulice a č.p.</label><input type="text" id="edit-contact-address"></div>
+                    <div><label data-lang-key="contactCity">Město</label><input type="text" id="edit-contact-city"></div>
+                    <div><label data-lang-key="contactZip">PSČ</label><input type="text" id="edit-contact-zip"></div>
+                    <div><label data-lang-key="contactState">Stát/Provincie</label><input type="text" id="edit-contact-state"></div>
+                    <div><label data-lang-key="contactPhone">Telefon</label><input type="text" id="edit-contact-phone"></div>
+                    <div><label>E-mail</label><input type="text" id="edit-contact-email"></div>
+                </div>
+                 <div style="margin-top: 15px;">
+                    <label data-lang-key="contactUrl">URL kontaktu</label>
+                    <input type="text" id="edit-contact-url">
+                </div>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button id="save-contact-changes-btn" data-lang-key="saveChanges">Uložit Změny</button>
+                    <button class="secondary" onclick="document.getElementById('edit-contact-modal').classList.remove('visible')" data-lang-key="close">Zavřít</button>
+                </div>
+            </div>
+        </div>
+
+    </div> 
+    <div id="welcome-screen">
+        <div class="welcome-box">
+            <h2 data-lang-key="welcomeTitle">Vítejte v AI Content Assistant PRO!</h2>
+            <p data-lang-key="welcomeDesc">Tato aplikace je open-source projekt, na kterém jsem pracoval několik měsíců, abych vám usnadnil tvorbu obsahu. Předtím, než začnete, je potřeba udělat jeden krok.</p>
+            
+            <p style="color: var(--text-secondary); margin-top: -15px;" data-lang-key="welcomeAuthor">Autor projektu: <strong>Lukáš Pištěk</strong></p>
+            <label for="api-key-input-welcome"><strong data-lang-key="welcomeApiKeyLabel">Zadejte svůj Google Gemini API klíč:</strong></label>
+            <input type="text" id="api-key-input-welcome" data-lang-key-placeholder="welcomeApiKeyPlaceholder" placeholder="Vložte svůj API klíč sem">
+            <p style="font-size: 0.8em; margin-top: 10px;" data-lang-key="welcomeApiKeyDesc">Váš klíč bude uložen bezpečně pouze ve vašem prohlížeči. Svůj klíč získáte zdarma v <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studiu</a>.</p>
+            <div id="api-key-error" data-lang-key="apiKeyError">Prosím, zadejte platný API klíč.</div>
+            
+            <div class="update-log">
+                <h4 data-lang-key="updateLogTitle">Update LOG (v1.5.1)</h4>
+                <ul>
+                    <li data-lang-key="update15_1_1"><strong>Nový nástroj:</strong> Přidán Generátor faktur (CZ/EN) s možností tisku/uložení do PDF.</li>
+                    <li data-lang-key="update15_1_2"><strong>Nový nástroj:</strong> Přidán Převodník obrázků (JPG, PNG, WEBP).</li>
+                    <li data-lang-key="update15_1_3"><strong>Vylepšení:</strong> Kontakty firem lze nyní manuálně upravovat.</li>
+                    <li data-lang-key="update15_0">Přidán překladač aplikace (CZ/EN) s přepínačem v záhlaví.</li>
+                    <li data-lang-key="update14_1">Opravena funkce "Poskytnout Feedback".</li>
+                    <li data-lang-key="update14_0_1">Přidána vstupní obrazovka s nutností zadat vlastní Gemini API klíč.</li>
+                    <li data-lang-key="update14_0_2">Nová funkce pro stažení hotových HTML šablon (eBay/Aukro).</li>
+                    <li data-lang-key="update14_0_3">Nová funkce pro zálohu a obnovu všech dat aplikace (v Nastavení).</li>
+                </ul>
+            </div>
+
+            <div class="welcome-actions">
+                <button id="save-api-key-btn" data-lang-key="saveAndRun">Uložit a Spustit Aplikaci</button>
+                <button class="secondary" onclick="window.open('https://www.paypal.me/lukas180', '_blank')" data-lang-key="supportMenu">Podpořit Autora ❤️</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="invoice-print-template" style="display: none;">
+    </div>
+
+    <audio id="typewriter-sound" preload="auto" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
+    <audio id="click-sound" preload="auto" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YUAAAAAAAAAAAAAAAAAAAAA="></audio>
+
+    <script>
+    // ===================================================================================
+    // ===       AI CONTENT ASSISTANT - v1.5.1 (JavaScript Core)                       ===
+    // ===================================================================================
+
+    // --- TRANSLATION DICTIONARIES ---
+    const translations = {
+        cs: {
+            // General & Menu
+            toolsMenu: "Další nástroje",
+            ebayEditorMenu: "eBay Editor (EN)",
+            aukroEditorMenu: "Aukro Editor (CZ)",
+            contactsMenu: "Kontakty Firem",
+            converterMenu: "Převodník Měn",
+            imageConverterMenu: "Převodník Obrázků",
+            invoiceGeneratorMenu: "Generátor Faktur",
+            adminMenu: "Nastavení (Admin)",
+            feedbackMenu: "Poskytnout Feedback",
+            supportMenu: "Podpořit Autora ❤️",
+            saveChanges: "Uložit Změny",
+            close: "Zavřít",
+            
+            // Editor Controls
+            copyHtml: "Kopírovat HTML",
+            downloadHtml: "Stáhnout HTML",
+            resetTemplate: "Resetovat Šablonu",
+            maximizePreview: "Maximalizovat náhled",
+            maximizePreviewActive: "Obnovit pohled",
+            clearFields: "Vymazat Pole & Data",
+
+            // eBay/Aukro Editors
+            productInfo: "Informace o produktu",
+            productName: "Název produktu:",
+            productNamePlaceholder: "např. UltraRychlý SSD Disk 1TB",
+            eanLabel: "EAN / UPC (doporučeno pro přesnost AI):",
+            pnLabel: "Part Number (PN) / SKU (doporučeno pro přesnost AI):",
+            fillWithAI: "Vyplnit vše pomocí AI",
+            sloganLabel: "Slogan (HTML podporováno):",
+            overviewLabel: "Stručný přehled produktu:",
+            overviewPlaceholder: "Popište klíčové vlastnosti, možnosti připojení a scénáře použití.",
+            featuresSpecs: "Vlastnosti a Specifikace",
+            keyFeaturesLabel: "Klíčové vlastnosti (jedna na řádek):",
+            keyFeaturesPlaceholder: "Vysoká rychlost čtení/zápisu\nNízká spotřeba energie\nOdolná konstrukce",
+            techSpecsLabel: "Technické Specifikace:",
+            addSpec: "+ Přidat Specifikaci",
+            specParamPlaceholder: "Parametr",
+            specValuePlaceholder: "Hodnota",
+            additionalInfo: "Doplňující Informace",
+            compatibilityLabel: "Kompatibilita (jedna na řádek):",
+            compatibilityPlaceholder: "Windows 10/11\nmacOS Ventura a novější\nLinux kernel 5.x",
+            noteLabel: "Text poznámky:",
+            notePlaceholder: "Zde přidejte důležitá varování nebo dodatečné informace.",
+            footerYearLabel: "Rok v patičce:",
+            footerCompanyLabel: "Název firmy v patičce:",
+            footerCompanyPlaceholder: "Vaše Firma s.r.o.",
+            historyTitle: "Historie změn",
+            boldTitle: "Tučný text",
+            mainInfoAukro: "Hlavní Informace",
+            productNameAukro: "Název produktu:",
+            productNameAukroPlaceholder: "Zadejte název produktu",
+            descriptionAukro: "Popis produktu:",
+            descriptionAukroPlaceholder: "Uveďte podrobnosti o produktu.",
+            specsCompatAukro: "Specifikace a Kompatibilita",
+            techSpecsAukro: "Technické parametry:",
+            addParamAukro: "+ Přidat parametr",
+            compatAukro: "Kompatibilita:",
+            compatAukroPlaceholder: "Uveďte informace o kompatibilitě.",
+            noteAukro: "Poznámka:",
+            noteAukroPlaceholder: "Sem můžete přidat doplňující poznámky.",
+
+            // Contacts
+            contactsWarning: "<strong>AI může dělat chyby (i co se týče lidí), takže všechno kontrolujte.</strong> Nově přidané kontakty se ukládají lokálně.",
+            addContactAI: "Přidat kontakt pomocí AI",
+            addContactAIPlaceholder: "Zadejte název firmy (např. 'NVIDIA')",
+            search: "Hledat",
+            contactName: "Název firmy", contactCountry: "Země/Region", contactStreet: "Ulice a č.p.", contactCity: "Město", contactZip: "PSČ", contactState: "Stát/Provincie", contactPhone: "Telefon", contactUrl: "URL kontaktu", contactActions: "Akce",
+            editContactTitle: "Upravit Kontakt",
+
+            // Currency Converter
+            converterTitle: "Převodník Měn",
+            converterSubtitle: "Zadejte částku a vyberte měnu pro okamžitý přepočet na hlavní světové měny.",
+            updateRate: "Updatuj dnešní kurz",
+            updateRate2: "\"Updatuj dnešní kurz\"",
+            howItWorks: "Jak to funguje?",
+            converterDesc1: "Tento nástroj používá data z <code>Frankfurter.app</code>, což je open-source služba poskytující kurzy měn od Evropské centrální banky. Data jsou aktualizována jednou denně.",
+            converterDesc2: "Tlačítko <strong>\"Updatuj dnešní kurz\"</strong> manuálně načte nejnovější dostupné denní kurzy. Po kliknutí jsou nová data k dispozici okamžitě. Aplikace si automaticky načte čerstvá data i při každém spuštění.",
+            
+            // Image Converter
+            imageConverterTitle: "Převodník Obrázků",
+            imageConverterSubtitle: "Nahrajte obrázek, zvolte formát a kvalitu, a stáhněte si výsledek.",
+            imageConverterInput: "Vstup",
+            imageConverterUpload: "Vybrat obrázek",
+            imageConverterSettings: "Nastavení výstupu",
+            imageConverterFormat: "Formát:",
+            imageConverterQuality: "Kvalita (pro JPEG/WEBP):",
+            downloadImage: "Stáhnout obrázek",
+            imageConverterDesc: "Celá konverze probíhá bezpečně pouze ve vašem prohlížeči. Obrázek se nikam neodesílá. Vyberte obrázek, nastavte požadovaný formát a kvalitu a klikněte na tlačítko pro stažení.",
+
+            // Invoice Generator
+            invoiceGeneratorTitle: "Generátor Faktur",
+            invoiceSettings: "Nastavení",
+            invoicePrint: "Tisk / Uložit jako PDF",
+            invoiceSeller: "Dodavatel (Vy)",
+            invoiceBuyer: "Odběratel (Klient)",
+            invoiceName: "Název firmy",
+            invoiceId: "IČO",
+            invoiceVat: "DIČ",
+            invoiceAddress: "Adresa",
+            invoiceBank: "Banka",
+            invoiceAccount: "Číslo účtu",
+            invoiceDetails: "Detaily Faktury",
+            invoiceNumber: "Číslo faktury",
+            invoiceIssueDate: "Datum vystavení",
+            invoiceDueDate: "Datum splatnosti",
+            invoiceCurrency: "Měna",
+            invoiceItems: "Položky",
+            invoiceItemDesc: "Popis",
+            invoiceItemQty: "Množství",
+            invoiceItemPrice: "Cena/ks",
+            invoiceItemTotal: "Celkem",
+            invoiceAddItem: "+ Přidat položku",
+            
+            // Admin Page
+            backupRestoreTitle: "Záloha & Obnova Dat Aplikace",
+            backupRestoreDesc: "Zde si můžete stáhnout zálohu všech vašich dat (chaty, uložené kontakty, nastavení šablon) do jednoho souboru. Tento soubor pak můžete použít k obnově dat, například při přechodu na nový počítač nebo po aktualizaci aplikace.",
+            downloadBackup: "Stáhnout Zálohu",
+            uploadBackup: "Načíst Zálohu",
+            adminTitle: "Nastavení eBay Šablony (Admin)",
+            adminDesc: "Zde můžete upravit statické texty, které se zobrazují ve vaší eBay šabloně. Změny se projeví po uložení a obnovení náhledu eBay editoru.",
+            adminMainSections: "Hlavní Sekce", adminHeaderFeatures: "Nadpis sekce \"Key Features\":", adminHeaderSpecs: "Nadpis sekce \"Technical Specifications\":", adminHeaderCompat: "Nadpis sekce \"Compatibility\":", adminHeaderNote: "Nadpis sekce \"Note\":",
+            adminInfoSections: "Informační Sekce", adminHeaderShipping: "Nadpis sekce \"Shipping\":", adminTextShipping: "Text odstavce \"Shipping\":", adminHeaderReturns: "Nadpis sekce \"Returns\":", adminTextReturns: "Text odstavce \"Returns\":", adminHeaderContact: "Nadpis sekce \"Contact Us\":", adminTextContact: "Text odstavce \"Contact Us\":", adminHeaderAbout: "Nadpis sekce \"About Us\":", adminTextAbout: "Text odstavce \"About Us\":",
+            adminTickerSection: "Běžící lišta (Ticker)", adminTickerHeader: "Nadpis lišty:", adminTickerText: "Text v liště (jednotlivé položky oddělujte \"•\"):", adminTickerDisclaimer: "Doplňující text pod lištou (Disclaimer):",
+            resetToDefault: "Resetovat na Výchozí",
+            
+            // AI Chat
+            aiAssistant: "AI Pomocník",
+            newConversation: "+ Nová konverzace",
+            showHelp: "Zobrazit Nápovědu",
+            chatPlaceholder: "Zeptejte se na cokoliv...",
+            send: "Odeslat",
+            refreshChatTitle: "Obnovit chat",
+            maximizeChatTitle: "Zvětšit/Zmenšit okno",
+            toggleBlurTitle: "Přepnout rozmazání a interakci pozadí",
+            closeChatTitle: "Zavřít chat",
+            uploadImageTitle: "Nahrát obrázek",
+            historyModalTitle: "Historie Změn",
+            
+            // Feedback Modal
+            feedbackModalTitle: "Poskytnout Feedback",
+            feedbackModalDesc: "Vaše zpětná vazba je pro mě nesmírně důležitá a pomáhá mi aplikaci vylepšovat. Děkuji!",
+            feedbackModalEmailLabel: "Moje emailová adresa:",
+            copy: "Kopírovat",
+            copied: "Zkopírováno!",
+            feedbackModalSubjectLabel: "Doporučený předmět:",
+            feedbackModalInstructions: "Prosím, otevřete svého emailového klienta, vložte adresu a napište mi své nápady, návrhy nebo hlášení chyb.",
+            
+            // Welcome Screen
+            welcomeTitle: "Vítejte v AI Content Assistant PRO!",
+            welcomeDesc: "Tato aplikace je open-source projekt, na kterém jsem pracoval několik měsíců, abych vám usnadnil tvorbu obsahu. Předtím, než začnete, je potřeba udělat jeden krok.",
+            welcomeAuthor: "Autor projektu: <strong>Lukáš Pištěk</strong>",
+            welcomeApiKeyLabel: "Zadejte svůj Google Gemini API klíč:",
+            welcomeApiKeyPlaceholder: "Vložte svůj API klíč sem",
+            welcomeApiKeyDesc: "Váš klíč bude uložen bezpečně pouze ve vašem prohlížeči. Svůj klíč získáte zdarma v <a href=\"https://aistudio.google.com/app/apikey\" target=\"_blank\">Google AI Studiu</a>.",
+            apiKeyError: "Prosím, zadejte platný API klíč.",
+            updateLogTitle: "Update LOG (v1.5.1)",
+            update15_1_1: "<strong>Nový nástroj:</strong> Přidán Generátor faktur (CZ/EN) s možností tisku/uložení do PDF.",
+            update15_1_2: "<strong>Nový nástroj:</strong> Přidán Převodník obrázků (JPG, PNG, WEBP).",
+            update15_1_3: "<strong>Vylepšení:</strong> Kontakty firem lze nyní manuálně upravovat.",
+            update15_0: "Přidán překladač aplikace (CZ/EN) s přepínačem v záhlaví.",
+            update14_1: "Opravena funkce \"Poskytnout Feedback\".",
+            update14_0_1: "Přidána vstupní obrazovka s nutností zadat vlastní Gemini API klíč.",
+            update14_0_2: "Nová funkce pro stažení hotových HTML šablon (eBay/Aukro).",
+            update14_0_3: "Nová funkce pro zálohu a obnovu všech dat aplikace (v Nastavení).",
+            saveAndRun: "Uložit a Spustit Aplikaci",
+
+            // Confirmations & Alerts
+            confirmClearEbay: "Opravdu chcete smazat všechna pole a data pro eBay šablonu?",
+            confirmClearAukro: "Opravdu chcete smazat všechna pole a data pro Aukro šablonu?",
+            confirmResetAdmin: "Opravdu chcete vrátit všechny texty v šabloně na výchozí hodnoty?",
+            adminSettingsSaved: "Nastavení šablony bylo uloženo!",
+            adminSettingsReset: "Nastavení bylo resetováno na výchozí hodnoty.",
+            chatDeleteConfirm: (title) => `Opravdu smazat konverzaci "${title}"?`,
+            chatRenamePrompt: (title) => `Zadejte nový název konverzace:`,
+            newChatName: "Nová konverzace",
+            welcomeChatTitle: "Vítejte! 👋",
+            insertText: "Vložit text",
+            rename: "Přejmenovat",
+            delete: "Smazat",
+        },
+        en: {
+            // General & Menu
+            toolsMenu: "More Tools",
+            ebayEditorMenu: "eBay Editor (EN)",
+            aukroEditorMenu: "Aukro Editor (CZ)",
+            contactsMenu: "Company Contacts",
+            converterMenu: "Currency Converter",
+            imageConverterMenu: "Image Converter",
+            invoiceGeneratorMenu: "Invoice Generator",
+            adminMenu: "Settings (Admin)",
+            feedbackMenu: "Provide Feedback",
+            supportMenu: "Support Author ❤️",
+            saveChanges: "Save Changes",
+            close: "Close",
+
+            // Editor Controls
+            copyHtml: "Copy HTML",
+            downloadHtml: "Download HTML",
+            resetTemplate: "Reset Template",
+            maximizePreview: "Maximize Preview",
+            maximizePreviewActive: "Restore View",
+            clearFields: "Clear Fields & Data",
+
+            // eBay/Aukro Editors
+            productInfo: "Product Information",
+            productName: "Product Name:",
+            productNamePlaceholder: "e.g., UltraFast SSD Drive 1TB",
+            eanLabel: "EAN / UPC (recommended for AI accuracy):",
+            pnLabel: "Part Number (PN) / SKU (recommended for AI accuracy):",
+            fillWithAI: "Fill all with AI",
+            sloganLabel: "Slogan (HTML supported):",
+            overviewLabel: "Brief Product Overview:",
+            overviewPlaceholder: "Describe key features, connectivity options, and usage scenarios.",
+            featuresSpecs: "Features & Specifications",
+            keyFeaturesLabel: "Key Features (one per line):",
+            keyFeaturesPlaceholder: "High read/write speed\nLow power consumption\nDurable construction",
+            techSpecsLabel: "Technical Specifications:",
+            addSpec: "+ Add Specification",
+            specParamPlaceholder: "Parameter",
+            specValuePlaceholder: "Value",
+            additionalInfo: "Additional Information",
+            compatibilityLabel: "Compatibility (one per line):",
+            compatibilityPlaceholder: "Windows 10/11\nmacOS Ventura and newer\nLinux kernel 5.x",
+            noteLabel: "Note Text:",
+            notePlaceholder: "Add important warnings or additional information here.",
+            footerYearLabel: "Footer Year:",
+            footerCompanyLabel: "Footer Company Name:",
+            footerCompanyPlaceholder: "Your Company LLC",
+            historyTitle: "Change History",
+            boldTitle: "Bold text",
+            mainInfoAukro: "Main Information",
+            productNameAukro: "Product name:",
+            productNameAukroPlaceholder: "Enter product name",
+            descriptionAukro: "Product description:",
+            descriptionAukroPlaceholder: "Provide details about the product.",
+            specsCompatAukro: "Specifications and Compatibility",
+            techSpecsAukro: "Technical parameters:",
+            addParamAukro: "+ Add parameter",
+            compatAukro: "Compatibility:",
+            compatAukroPlaceholder: "Provide compatibility information.",
+            noteAukro: "Note:",
+            noteAukroPlaceholder: "You can add additional notes here.",
+
+            // Contacts
+            contactsWarning: "<strong>AI can make mistakes (including about people), so please verify everything.</strong> Newly added contacts are saved locally.",
+            addContactAI: "Add Contact with AI",
+            addContactAIPlaceholder: "Enter company name (e.g., 'NVIDIA')",
+            search: "Search",
+            contactName: "Company Name", contactCountry: "Country/Region", contactStreet: "Street and No.", contactCity: "City", contactZip: "ZIP Code", contactState: "State/Province", contactPhone: "Phone", contactUrl: "Contact URL", contactActions: "Actions",
+            editContactTitle: "Edit Contact",
+
+            // Currency Converter
+            converterTitle: "Currency Converter",
+            converterSubtitle: "Enter an amount and select a currency for instant conversion to major world currencies.",
+            updateRate: "Update Today's Rate",
+            updateRate2: "\"Update Today's Rate\"",
+            howItWorks: "How does it work?",
+            converterDesc1: "This tool uses data from <code>Frankfurter.app</code>, an open-source service providing currency rates from the European Central Bank. Data is updated once a day.",
+            converterDesc2: "The <strong>\"Update Today's Rate\"</strong> button manually fetches the latest available daily rates. After clicking, the new data is available immediately. The application also automatically fetches fresh data on every launch.",
+            
+            // Image Converter
+            imageConverterTitle: "Image Converter",
+            imageConverterSubtitle: "Upload an image, choose the format and quality, and download the result.",
+            imageConverterInput: "Input",
+            imageConverterUpload: "Select Image",
+            imageConverterSettings: "Output Settings",
+            imageConverterFormat: "Format:",
+            imageConverterQuality: "Quality (for JPEG/WEBP):",
+            downloadImage: "Download Image",
+            imageConverterDesc: "The entire conversion process happens securely within your browser. The image is not sent anywhere. Select an image, set the desired format and quality, and click the download button.",
+
+            // Invoice Generator
+            invoiceGeneratorTitle: "Invoice Generator",
+            invoiceSettings: "Settings",
+            invoicePrint: "Print / Save as PDF",
+            invoiceSeller: "Seller (You)",
+            invoiceBuyer: "Buyer (Client)",
+            invoiceName: "Company Name",
+            invoiceId: "Company ID",
+            invoiceVat: "VAT ID",
+            invoiceAddress: "Address",
+            invoiceBank: "Bank",
+            invoiceAccount: "Account Number",
+            invoiceDetails: "Invoice Details",
+            invoiceNumber: "Invoice Number",
+            invoiceIssueDate: "Issue Date",
+            invoiceDueDate: "Due Date",
+            invoiceCurrency: "Currency",
+            invoiceItems: "Items",
+            invoiceItemDesc: "Description",
+            invoiceItemQty: "Quantity",
+            invoiceItemPrice: "Price/unit",
+            invoiceItemTotal: "Total",
+            invoiceAddItem: "+ Add Item",
+
+            // Admin Page
+            backupRestoreTitle: "Application Data Backup & Restore",
+            backupRestoreDesc: "Here you can download a backup of all your data (chats, saved contacts, template settings) into a single file. You can then use this file to restore data, for example, when moving to a new computer or after updating the application.",
+            downloadBackup: "Download Backup",
+            uploadBackup: "Load Backup",
+            adminTitle: "eBay Template Settings (Admin)",
+            adminDesc: "Here you can edit the static texts that appear in your eBay template. The changes will take effect after saving and refreshing the eBay editor preview.",
+            adminMainSections: "Main Sections", adminHeaderFeatures: "Header for \"Key Features\" section:", adminHeaderSpecs: "Header for \"Technical Specifications\" section:", adminHeaderCompat: "Header for \"Compatibility\" section:", adminHeaderNote: "Header for \"Note\" section:",
+            adminInfoSections: "Information Sections", adminHeaderShipping: "Header for \"Shipping\" section:", adminTextShipping: "Text for \"Shipping\" paragraph:", adminHeaderReturns: "Header for \"Returns\" section:", adminTextReturns: "Text for \"Returns\" paragraph:", adminHeaderContact: "Header for \"Contact Us\" section:", adminTextContact: "Text for \"Contact Us\" paragraph:", adminHeaderAbout: "Header for \"About Us\" section:", adminTextAbout: "Text for \"About Us\" paragraph:",
+            adminTickerSection: "Ticker Tape", adminTickerHeader: "Ticker header:", adminTickerText: "Text in ticker (separate items with \"•\"):", adminTickerDisclaimer: "Disclaimer text below the ticker:",
+            resetToDefault: "Reset to Default",
+
+            // AI Chat
+            aiAssistant: "AI Assistant",
+            newConversation: "+ New Conversation",
+            showHelp: "Show Help",
+            chatPlaceholder: "Ask anything...",
+            send: "Send",
+            refreshChatTitle: "Refresh chat",
+            maximizeChatTitle: "Maximize/Minimize window",
+            toggleBlurTitle: "Toggle background blur and interaction",
+            closeChatTitle: "Close chat",
+            uploadImageTitle: "Upload image",
+            historyModalTitle: "Change History",
+            
+            // Feedback Modal
+            feedbackModalTitle: "Provide Feedback",
+            feedbackModalDesc: "Your feedback is extremely important to me and helps me improve the application. Thank you!",
+            feedbackModalEmailLabel: "My email address:",
+            copy: "Copy",
+            copied: "Copied!",
+            feedbackModalSubjectLabel: "Recommended subject:",
+            feedbackModalInstructions: "Please open your email client, paste the address, and write me your ideas, suggestions, or bug reports.",
+
+            // Welcome Screen
+            welcomeTitle: "Welcome to AI Content Assistant PRO!",
+            welcomeDesc: "This application is an open-source project I've worked on for several months to make content creation easier for you. Before you begin, there's one step to take.",
+            welcomeAuthor: "Project Author: <strong>Lukáš Pištěk</strong>",
+            welcomeApiKeyLabel: "Enter your Google Gemini API Key:",
+            welcomeApiKeyPlaceholder: "Paste your API key here",
+            welcomeApiKeyDesc: "Your key will be stored securely only in your browser. You can get your key for free at the <a href=\"https://aistudio.google.com/app/apikey\" target=\"_blank\">Google AI Studio</a>.",
+            apiKeyError: "Please enter a valid API key.",
+            updateLogTitle: "Update LOG (v1.5.1)",
+            update15_1_1: "<strong>New Tool:</strong> Added Invoice Generator (CZ/EN) with print/save to PDF option.",
+            update15_1_2: "<strong>New Tool:</strong> Added Image Converter (JPG, PNG, WEBP).",
+            update15_1_3: "<strong>Enhancement:</strong> Company contacts can now be manually edited.",
+            update15_0: "Added application translator (CZ/EN) with a switcher in the header.",
+            update14_1: "Fixed the \"Provide Feedback\" function.",
+            update14_0_1: "Added a welcome screen requiring a custom Gemini API key.",
+            update14_0_2: "New feature to download final HTML templates (eBay/Aukro).",
+            update14_0_3: "New feature to back up and restore all application data (in Settings).",
+            saveAndRun: "Save and Launch App",
+            
+            // Confirmations & Alerts
+            confirmClearEbay: "Are you sure you want to delete all fields and data for the eBay template?",
+            confirmClearAukro: "Are you sure you want to delete all fields and data for the Aukro template?",
+            confirmResetAdmin: "Are you sure you want to reset all template texts to their default values?",
+            adminSettingsSaved: "Template settings have been saved!",
+            adminSettingsReset: "Settings have been reset to default values.",
+            chatDeleteConfirm: (title) => `Really delete conversation "${title}"?`,
+            chatRenamePrompt: (title) => `Enter a new name for the conversation:`,
+            newChatName: "New Conversation",
+            welcomeChatTitle: "Welcome! 👋",
+            insertText: "Insert text",
+            rename: "Rename",
+            delete: "Delete",
+        }
+    };
+    
+    // --- BUILT-IN TEMPLATES (FULL VERSION) ---
+    const ebayTemplateHtmlString = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Modern eBay Full-Width Template</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--background-color,#fff);color:var(--text-color,#000);font-family:'Roboto',sans-serif}.theme-wrapper{--background-color:#fff;--text-color:#000;--primary-color:#000;--secondary-color:#fff;--accent-color:#000;--note-bg:#fff9c4;--note-border:#fbc02d;--payment-bg:#f4f4f4;--ticker-duration:30s;--note-icon-stroke:#000;background:var(--background-color);color:var(--text-color);padding:10px;position:relative;overflow:hidden;transition:background .3s,color .3s}#theme-toggle:checked~.theme-wrapper{--background-color:#1c1c1c;--text-color:#fff;--primary-color:#d32f2f;--secondary-color:#2c2c2c;--accent-color:#d32f2f;--note-bg:#4e0000;--note-border:#8e0000;--payment-bg:#333;--note-icon-stroke:#fff}#theme-toggle{display:none}.theme-toggle{position:fixed;top:10px;right:10px;background:0 0;border:none;cursor:pointer;z-index:1000;display:flex;align-items:center;gap:4px;font-size:12px;color:inherit}.theme-toggle svg{width:20px;height:20px;stroke:currentColor;fill:none}#theme-toggle:checked~.theme-wrapper .theme-toggle .sun-icon{display:none}#theme-toggle~.theme-wrapper .theme-toggle .moon-icon{display:none}#theme-toggle:checked~.theme-wrapper .theme-toggle .moon-icon{display:block}.theme-toggle span{font-weight:700}.bg-shape{position:absolute;opacity:.1;z-index:-1}.shape1{width:250px;height:250px;background:radial-gradient(circle at center,var(--primary-color),transparent);top:-125px;left:-125px;border-radius:50%}.shape2{width:300px;height:300px;background:radial-gradient(circle at center,var(--primary-color),transparent);bottom:-150px;right:-150px;border-radius:50%}.container{width:100%;max-width:1200px;margin:0 auto;position:relative;z-index:1;padding:0 10px}.content{display:block;background:var(--background-color);padding:20px;border-radius:10px;box-shadow:0 3px 6px rgba(0,0,0,.1);margin-bottom:20px;transition:background .3s,box-shadow .3s}h1,h2,h3{color:var(--primary-color);margin-top:0}.section-header{background:var(--primary-color);color:var(--secondary-color);padding:8px 12px;border-radius:6px;margin:20px 0 12px;font-size:1.2em;font-weight:700}p{line-height:1.6;margin-bottom:12px;font-size:14px}ul{list-style-type:disc;padding-left:20px;margin-bottom:16px}li{margin-bottom:6px;line-height:1.5;font-size:14px}table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:14px;border-radius:10px;overflow:hidden;border:1px solid #ddd}table th,table td{border:1px solid var(--note-border);padding:10px;text-align:left}table th{background:var(--primary-color);color:var(--secondary-color);font-weight:700;border-color:var(--primary-color)}table tr:nth-child(even){background-color:var(--payment-bg)}table th:first-child{border-top-left-radius:10px}table th:last-child{border-top-right-radius:10px}table tr:last-child td:first-child{border-bottom-left-radius:10px}table tr:last-child td:last-child{border-bottom-right-radius:10px}.note{display:flex;align-items:flex-start;background:var(--note-bg);border-left:4px solid var(--note-border);padding:12px;border-radius:6px;margin-top:16px;font-size:14px;color:var(--text-color)}.note svg{flex-shrink:0;margin-right:10px;width:20px;height:20px;fill:var(--accent-color)}.note svg path:last-child,.note svg path:nth-last-child(2){stroke:var(--note-icon-stroke)}.payment-methods{text-align:center;margin-top:20px;margin-bottom:20px;padding:0}.payment-method{display:inline-flex;justify-content:center;align-items:center;width:60px;height:35px;border:1px solid #ccc;border-radius:5px;margin:0 8px;background:var(--payment-bg);vertical-align:middle;overflow:hidden}.payment-method:last-child{font-weight:700;font-size:12px;color:var(--text-color)}.payment-method img{max-width:90%;max-height:90%;object-fit:contain}.payment-method .iban-text{padding:0 5px;text-align:center}.ticker-header{display:block;width:120px;background:var(--secondary-color);border:2px solid var(--primary-color);border-radius:15px;text-align:center;font-size:14px;font-weight:700;margin:20px auto 10px;padding:4px 8px;position:relative;z-index:3;color:var(--primary-color)}.ticker-container{width:100%;margin:0 auto 10px;padding:10px 0;background:#333;border:1px solid #444;border-radius:6px;position:relative;overflow:hidden}.ticker-content{display:inline-block;white-space:nowrap;animation:ticker var(--ticker-duration) linear infinite;font-size:14px;color:#fff;padding:0 10px}.ticker-container:hover .ticker-content{animation-play-state:paused}@keyframes ticker{0%{transform:translateX(100%)}to{transform:translateX(-100%)}}.ticker-container::after,.ticker-container::before{content:'';position:absolute;top:0;width:30px;height:100%;pointer-events:none;z-index:2}.ticker-container::before{left:0;background:linear-gradient(90deg,#333,transparent)}.ticker-container::after{right:0;background:linear-gradient(270deg,#333,transparent)}.disclaimer{text-align:center;font-size:12px;color:#555;margin-top:8px;margin-bottom:20px}footer{text-align:center;font-size:12px;color:var(--text-color);margin-top:20px;padding-top:10px;border-top:1px solid #ccc}@media (max-width:768px){.container{padding:0 15px}table,table td,table th{display:block;width:100%}table thead{display:none}table tr{margin-bottom:15px;border:1px solid var(--note-border);border-radius:10px;overflow:hidden}table td{border:none;border-bottom:1px solid var(--note-border);position:relative;padding-left:50%;text-align:right}table td::before{content:attr(data-label);position:absolute;left:10px;width:45%;padding-right:10px;white-space:nowrap;font-weight:700;text-align:left;color:var(--primary-color)}table tr:last-child td:first-child,table tr:last-child td:last-child{border-bottom-left-radius:0;border-bottom-right-radius:0}table tr{background-color:transparent!important}table td:last-child{border-bottom:none}.note{flex-direction:column;align-items:center;text-align:center}.note svg{margin-right:0;margin-bottom:8px}}@media (max-width:480px){.container{padding:0 10px}.theme-toggle{font-size:10px;gap:2px}.theme-toggle svg{width:18px;height:18px}.ticker-header{font-size:12px;width:100px}.payment-method{width:50px;height:30px;margin:0 4px}.payment-method .iban-text{font-size:10px}.note{padding:10px;font-size:12px}.note svg{width:18px;height:18px;margin-bottom:6px}p,ul,li{font-size:12px}table,table td,table th{font-size:12px;padding:8px}table td::before{font-size:12px}.disclaimer{font-size:10px}footer{font-size:10px}}</style>
+</head>
+<body>
+    <input type="checkbox" id="theme-toggle">
+    <label for="theme-toggle" class="theme-toggle" aria-label="Change Theme"><svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" /><g stroke-width="2" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></g></svg><svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 0111.21 3 7 7 0 0012 17a7 7 0 009-4.21z" stroke="currentColor"/> </svg><span>Change Theme</span></label>
+    <div class="theme-wrapper">
+        <div class="bg-shape shape1"></div><div class="bg-shape shape2"></div>
+        <main class="container">
+            <article class="content">
+                <h1 id="tpl_product_name">Product Name</h1>
+                <p id="tpl_slogan"><strong>Insert a marketing slogan or key benefit here.</strong></p>
+                <div id="tpl_overview">A brief product overview describing connectivity options, battery life, and usage scenarios.</div>
+                <h2 class="section-header" id="admin_header_features">##admin_header_features##</h2><ul id="tpl_features"><li>Feature 1</li><li>Feature 2</li><li>Feature 3</li><li>Feature 4</li></ul>
+                <h2 class="section-header" id="admin_header_specs">##admin_header_specs##</h2><table><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody id="tpl_tech_specs_tbody"><tr><td data-label="Parameter">Parameter 1</td><td data-label="Value">Value 1</td></tr><tr><td data-label="Parameter">Parameter 2</td><td data-label="Value">Value 2</td></tr><tr><td data-label="Parameter">Parameter 3</td><td data-label="Value">Value 3</td></tr></tbody></table>
+                <h2 class="section-header" id="admin_header_compat">##admin_header_compat##</h2><ul id="tpl_compatibility"><li>Compatibility 1</li><li>Compatibility 2</li><li>Compatibility 3</li></ul>
+                <h2 class="section-header" id="admin_header_note">##admin_header_note##</h2><div class="note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M1 21H23L12 2L1 21Z" fill="var(--accent-color)"/><path d="M12 16V14" stroke="var(--note-icon-stroke)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 10H12.01" stroke="var(--note-icon-stroke)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="tpl_note_text">Insert any additional product notes or warnings here.</span></div>
+                <h2 class="section-header" id="admin_header_shipping">##admin_header_shipping##</h2><section><p id="admin_text_shipping">##admin_text_shipping##</p></section>
+                <h2 class="section-header" id="admin_header_returns">##admin_header_returns##</h2><section><p id="admin_text_returns">##admin_text_returns##</p></section>
+                <h2 class="section-header" id="admin_header_contact">##admin_header_contact##</h2><section><p id="admin_text_contact">##admin_text_contact##</p></section>
+                <h2 class="section-header" id="admin_header_about">##admin_header_about##</h2><section><p id="admin_text_about">##admin_text_about##</p></section>
+            </article>
+            <section class="payment-methods" aria-label="Platební metody"><div class="payment-method"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="Logo PayPal"></div><div class="payment-method"><img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" alt="Logo Visa"></div><div class="payment-method"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Logo MasterCard"></div><div class="payment-method"><span class="iban-text">IBAN</span></div></section>
+            <section aria-label="Delivery Times"><div class="ticker-header" id="admin_header_ticker">##admin_header_ticker##</div><div class="ticker-container" aria-live="polite"><div class="ticker-content" id="admin_text_ticker">##admin_text_ticker##</div></div><div class="disclaimer" id="admin_text_disclaimer">##admin_text_disclaimer##</div></section>
+        </main>
+        <footer id="tpl_footer_text">&copy; 2025 Your Company S.R.O. All rights reserved.</footer>
+    </div>
+</body>
+</html>`;
+    const aukroTemplateHtmlString = `
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Produktový popis</title>
+  <style>* { box-sizing: border-box; border-radius: 8px; } body { background-color: #ffffff; color: #333; font-family: Arial, sans-serif; padding: 20px; margin: 0; } h1 { font-size: 1.8em; color: #FF6600; margin-top: 0; } .section { margin-bottom: 20px; } .section-header { background-color: #FF6600; color: #ffffff; padding: 10px; font-size: 1.2em; font-weight: bold; } .section-body { border: 1px solid #FF6600; padding: 10px; } p { margin: 10px 0; line-height: 1.5; } table { width: 100%; border-collapse: collapse; } table, th, td { border: 1px solid #FF6600; } th, td { padding: 8px; text-align: left; } th { background-color: #FF6600; color: #ffffff; } </style>
+</head>
+<body>
+  <h1 id="tpl_aukro_product_name">Název produktu</h1>
+  <div class="section"><div class="section-header">Popis produktu</div><div class="section-body"><p id="tpl_aukro_description">Zde je popis produktu. Uveďte podrobnosti o produktu, jeho vlastnostech a výhodách.</p></div></div>
+  <div class="section"><div class="section-header">Technické parametry</div><div class="section-body"><table><thead><tr><th>Parametr</th><th>Hodnota</th></tr></thead><tbody id="tpl_aukro_tech_specs_tbody"><tr><td>Placeholder 1</td><td>Placeholder 1</td></tr><tr><td>Placeholder 2</td><td>Placeholder 2</td></tr></tbody></table></div></div>
+  <div class="section"><div class="section-header">Kompatibilita</div><div class="section-body"><p id="tpl_aukro_compatibility">Zde uveďte informace o kompatibilitě produktu s jinými zařízeními či systémy.</p></div></div>
+  <div class="section"><div class="section-header">Poznámka</div><div class="section-body"><p id="tpl_aukro_note">Sem můžete přidat doplňující poznámky nebo upozornění k produktu.</p></div></div>
+</body>
+</html>`;
+    const invoiceTemplateStrings = {
+        cs: `<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"><title>Faktura</title><style>body{font-family:sans-serif;font-size:12px;margin:0;color:#333}#invoice{padding:40px}.header{display:flex;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:10px}h1{margin:0;color:#FF6600}.parties{display:flex;justify-content:space-between;margin-top:20px}.party{width:48%}.party h2{border-bottom:1px solid #ccc;padding-bottom:5px;font-size:14px}p{margin:5px 0}.details{margin-top:30px;border:1px solid #ccc;border-radius:5px}.details-grid{display:flex}.detail-item{flex:1;padding:10px;text-align:center}.detail-item:not(:last-child){border-right:1px solid #ccc}.detail-item strong{display:block;margin-bottom:5px}table{width:100%;margin-top:30px;border-collapse:collapse}thead{background-color:#f2f2f2}th,td{padding:8px;border:1px solid #ccc;text-align:right}th{text-align:left}.item-desc{text-align:left}.totals{margin-top:20px;float:right;width:40%}.totals-table{width:100%}.totals-table td{border:0;padding:5px 8px}.totals-table tr.total td{font-weight:bold;font-size:1.2em;border-top:2px solid #333}footer{margin-top:40px;padding-top:10px;border-top:1px solid #ccc;font-size:10px;text-align:center}</style></head><body><div id="invoice"><h1>FAKTURA</h1><div class="header"><p>##SELLER_NAME##<br>##SELLER_ADDRESS##<br>IČO: ##SELLER_ID##<br>DIČ: ##SELLER_VAT##</p><p>Banka: ##SELLER_BANK##<br>Účet: ##SELLER_ACCOUNT##</p></div><div class="parties"> <div class="party"><h2>Odběratel</h2><p><strong>##BUYER_NAME##</strong><br>##BUYER_ADDRESS##<br>IČO: ##BUYER_ID##<br>DIČ: ##BUYER_VAT##</p></div></div><div class="details"><div class="details-grid"><div class="detail-item"><strong>Číslo faktury</strong><span>##INVOICE_NUMBER##</span></div><div class="detail-item"><strong>Datum vystavení</strong><span>##ISSUE_DATE##</span></div><div class="detail-item"><strong>Datum splatnosti</strong><span>##DUE_DATE##</span></div></div></div><table><thead><tr><th class="item-desc">Popis položky</th><th>Množství</th><th>Cena/ks</th><th>Celkem</th></tr></thead><tbody>##ITEMS##</tbody></table><div class="totals"><table class="totals-table"><tbody><tr><td>Mezisoučet:</td><td style="text-align:right;">##SUBTOTAL##</td></tr><tr><td>DPH:</td><td style="text-align:right;">##TAX##</td></tr><tr class="total"><td>CELKEM K ÚHRADĚ:</td><td style="text-align:right;">##TOTAL## ##CURRENCY##</td></tr></tbody></table></div><footer><p>Fakturu vystavil ##SELLER_NAME##.</p></div></body></html>`,
+        en: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Invoice</title><style>body{font-family:sans-serif;font-size:12px;margin:0;color:#333}#invoice{padding:40px}.header{display:flex;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:10px}h1{margin:0;color:#FF6600}.parties{display:flex;justify-content:space-between;margin-top:20px}.party{width:48%}.party h2{border-bottom:1px solid #ccc;padding-bottom:5px;font-size:14px}p{margin:5px 0}.details{margin-top:30px;border:1px solid #ccc;border-radius:5px}.details-grid{display:flex}.detail-item{flex:1;padding:10px;text-align:center}.detail-item:not(:last-child){border-right:1px solid #ccc}.detail-item strong{display:block;margin-bottom:5px}table{width:100%;margin-top:30px;border-collapse:collapse}thead{background-color:#f2f2f2}th,td{padding:8px;border:1px solid #ccc;text-align:right}th{text-align:left}.item-desc{text-align:left}.totals{margin-top:20px;float:right;width:40%}.totals-table{width:100%}.totals-table td{border:0;padding:5px 8px}.totals-table tr.total td{font-weight:bold;font-size:1.2em;border-top:2px solid #333}footer{margin-top:40px;padding-top:10px;border-top:1px solid #ccc;font-size:10px;text-align:center}</style></head><body><div id="invoice"><h1>INVOICE</h1><div class="header"><p>##SELLER_NAME##<br>##SELLER_ADDRESS##<br>ID: ##SELLER_ID##<br>VAT ID: ##SELLER_VAT##</p><p>Bank: ##SELLER_BANK##<br>Account: ##SELLER_ACCOUNT##</p></div><div class="parties"><div class="party"><h2>Bill To</h2><p><strong>##BUYER_NAME##</strong><br>##BUYER_ADDRESS##<br>ID: ##BUYER_ID##<br>VAT ID: ##BUYER_VAT##</p></div></div><div class="details"><div class="details-grid"><div class="detail-item"><strong>Invoice Number</strong><span>##INVOICE_NUMBER##</span></div><div class="detail-item"><strong>Issue Date</strong><span>##ISSUE_DATE##</span></div><div class="detail-item"><strong>Due Date</strong><span>##DUE_DATE##</span></div></div></div><table><thead><tr><th class="item-desc">Item Description</th><th>Quantity</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>##ITEMS##</tbody></table><div class="totals"><table class="totals-table"><tbody><tr><td>Subtotal:</td><td style="text-align:right;">##SUBTOTAL##</td></tr><tr><td>VAT:</td><td style="text-align:right;">##TAX##</td></tr><tr class="total"><td>TOTAL DUE:</td><td style="text-align:right;">##TOTAL## ##CURRENCY##</td></tr></tbody></table></div><footer><p>Invoice issued by ##SELLER_NAME##.</p></div></body></html>`,
+    };
+    
+    // --- GLOBAL STATE & CONFIG ---
+    const appSignature = 'QXV0aG9yZWQgYnkgTHVrw6HFoSDFpWh0ZWs_gKGsdWthc3Bpc3RlazY2NkBnbWFpbC5jb20pIC0gQUkgQ29udGVudCBBc3Npc3RhbnQgUFJPIHYxLjUuMQ==';
+    let currentVisiblePage = 'editor';
+    let GEMINI_API_KEY = "";
+    let currentLang = 'cs';
+    const contactDataLocalStorageKey = 'companyContactsData_v1';
+    const ebayLocalStorageKey = 'ebayTemplateEditorData_vFinal';
+    const aukroLocalStorageKey = 'aukroTemplateEditorData_vFinal';
+    const adminSettingsKey = 'ebayAdminSettings_v1';
+    const geminiApiKeyLocalStorageKey = 'geminiApiKey_v1';
+    const appLanguageKey = 'appLanguage_v1';
+    let currencyRates = {};
+    let adminSettings = {};
+    let companyContacts = [];
+    
+    const ebayMappings = [ { inputId: 'input_product_name', tplId: 'tpl_product_name', type: 'text', label: 'Product Name' }, { inputId: 'input_slogan', tplId: 'tpl_slogan', type: 'html', label: 'Slogan' }, { inputId: 'input_overview', tplId: 'tpl_overview', type: 'html', label: 'Brief Product Overview' }, { inputId: 'input_features', tplId: 'tpl_features', type: 'list', label: 'Key Features' }, { editorAreaId: 'tech_specs_editor_area', tplId: 'tpl_tech_specs_tbody', type: 'table', label: 'Technical Specifications' }, { inputId: 'input_compatibility', tplId: 'tpl_compatibility', type: 'list', label: 'Compatibility' }, { inputId: 'input_note_text', tplId: 'tpl_note_text', type: 'text', label: 'Note Text' } ];
+    const aukroMappings = [ { inputId: 'input_aukro_product_name', tplId: 'tpl_aukro_product_name', type: 'text', required: true, label: 'Název produktu' }, { inputId: 'input_aukro_description', tplId: 'tpl_aukro_description', type: 'text', required: true, label: 'Popis produktu' }, { editorAreaId: 'aukro_tech_specs_editor_area', tplId: 'tpl_aukro_tech_specs_tbody', type: 'table', required: false, label: 'Technické parametry' }, { inputId: 'input_aukro_compatibility', tplId: 'tpl_aukro_compatibility', type: 'text', required: true, label: 'Kompatibilita' }, { inputId: 'input_aukro_note', tplId: 'tpl_aukro_note', type: 'text', required: true, label: 'Poznámka' } ];
+    const adminSettingFields = [ 'input_admin_header_features', 'input_admin_header_specs', 'input_admin_header_compat', 'input_admin_header_note', 'input_admin_header_shipping', 'input_admin_text_shipping', 'input_admin_header_returns', 'input_admin_text_returns', 'input_admin_header_contact', 'input_admin_text_contact', 'input_admin_header_about', 'input_admin_text_about', 'input_admin_header_ticker', 'input_admin_text_ticker', 'input_admin_text_disclaimer' ];
+
+    // --- UI ELEMENTS ---
+    const ui = {
+        chatModal: document.getElementById('ai-chat-modal'),
+        chatBubbleWrapper: document.getElementById('ai-chat-bubble-wrapper'),
+        closeChatBtn: document.querySelector('.close-chat-btn'),
+        chatList: document.getElementById('chat-list'),
+        newChatBtn: document.getElementById('new-chat-btn'),
+        showHelpBtn: document.getElementById('show-help-btn'),
+        chatTitleHeader: document.getElementById('chat-title-header'),
+        chatContainer: document.getElementById('chat-container'),
+        chatInput: document.getElementById('chat-input'),
+        sendChatBtn: document.getElementById('send-chat-btn'),
+        uploadImageBtn: document.getElementById('upload-image-btn'),
+        uploadImageInput: document.getElementById('upload-image-input'),
+        imagePreviewContainer: document.getElementById('image-preview-container'),
+        imagePreview: document.getElementById('image-preview'),
+        imagePreviewFilename: document.getElementById('image-preview-filename'),
+        removeImageBtn: document.getElementById('remove-image-btn'),
+        versionHistoryModal: document.getElementById('version-history-modal'),
+        versionHistoryTitle: document.getElementById('version-history-title'),
+        versionHistoryList: document.getElementById('version-history-list'),
+        toggleBlurBtn: document.getElementById('toggle-blur-btn'),
+        refreshChatBtn: document.getElementById('refresh-chat-btn'),
+        toggleMaximizeBtn: document.getElementById('toggle-maximize-btn'),
+    };
+    
+    // --- CHAT & DATA STATE ---
+    const GEMINI_CHAT_DATA_LS_KEY = 'geminiMultiChatData_vFinal';
+    let chatData = { activeChatId: null, chats: {} };
+    let chatState = { imageData: null, imageMimeType: null };
+    const versionedFields = ['input_product_name', 'input_slogan', 'input_overview', 'input_features', 'input_compatibility', 'input_note_text'];
+
+    // --- TRANSLATOR ---
+    function setLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem(appLanguageKey, lang);
+        document.documentElement.lang = lang;
+        const dict = translations[lang];
+        if (!dict) return;
+
+        document.querySelectorAll('[data-lang-key]').forEach(el => {
+            const key = el.dataset.langKey;
+            if (dict[key]) {
+                el.innerHTML = dict[key];
+            }
+        });
+
+        document.querySelectorAll('[data-lang-key-placeholder]').forEach(el => {
+            const key = el.dataset.langKeyPlaceholder;
+            if (dict[key]) {
+                el.placeholder = dict[key];
+            }
+        });
+        
+        document.querySelectorAll('[data-lang-key-title]').forEach(el => {
+            const key = el.dataset.langKeyTitle;
+            if (dict[key]) {
+                el.title = dict[key];
+            }
+        });
+    }
+
+    // --- VERSIONING MANAGER ---
+    const versionManager = {
+        history: {},
+        save(fieldId, content) { if (!document.getElementById(fieldId)) return; if (!this.history[fieldId]) this.history[fieldId] = []; if (this.history[fieldId].at(-1)?.content === content) return; this.history[fieldId].push({ timestamp: new Date(), content: content }); },
+        showHistory(fieldId) { const history = this.history[fieldId] || []; const fieldLabel = document.querySelector(`label[for='${fieldId}']`).textContent.replace(' *', ''); ui.versionHistoryTitle.textContent = `${translations[currentLang].historyModalTitle}: ${fieldLabel}`; ui.versionHistoryList.innerHTML = ''; if (history.length === 0) { ui.versionHistoryList.innerHTML = `<p>Žádná historie pro toto pole.</p>`; } else { [...history].reverse().forEach(item => { const div = document.createElement('div'); div.className = 'version-item'; div.innerHTML = `<div class="version-meta">Uloženo: <span class="math-inline">\{item\.timestamp\.toLocaleString\('cs\-CZ'\)\}</div\><div class\="version\-content"\></span>{item.content.replace(/\n/g, '<br>')}</div><button class="secondary" style="margin-top:10px; padding: 5px 10px; font-size: 0.9em;">Obnovit</button>`; div.querySelector('button').onclick = () => { document.getElementById(fieldId).value = item.content; if(fieldId.includes('aukro')) { updateAukroPreview(); } else { updateEbayPreview(); } ui.versionHistoryModal.classList.remove('visible'); }; ui.versionHistoryList.appendChild(div); }); } ui.versionHistoryModal.classList.add('visible'); }
+    };
+
+    // --- UI & PAGE MANAGEMENT ---
+    function showPage(pageId) { currentVisiblePage = pageId; document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active')); document.querySelectorAll('.editor-controls').forEach(c => c.classList.remove('active')); let wrapperId, controlsId; if (pageId === 'editor') { wrapperId = 'ebay-editor-page-wrapper'; controlsId = 'editor-page-controls'; } else if (pageId === 'aukro-editor') { wrapperId = 'aukro-editor-page-wrapper'; controlsId = 'aukro-editor-page-controls'; } else { wrapperId = `${pageId}-page`; } if(pageId === 'invoice-generator') wrapperId = 'invoice-generator-page'; if (wrapperId && document.getElementById(wrapperId)) document.getElementById(wrapperId).classList.add('active'); if (controlsId && document.getElementById(controlsId)) document.getElementById(controlsId).classList.add('active'); }
+    function makeResizable(resizerId) { const resizer = document.getElementById(resizerId); if (!resizer) return; let isResizing = false; resizer.addEventListener('mousedown', function(e) { isResizing = true; resizer.classList.add('resizing'); const startX = e.clientX, leftPanel = resizer.previousElementSibling, rightPanel = resizer.nextElementSibling, startWidthLeft = leftPanel.offsetWidth; function handleMouseMove(e) { if (!isResizing) return; const dx = e.clientX - startX, containerWidth = resizer.parentElement.offsetWidth; let newLeftWidth = startWidthLeft + dx; if (newLeftWidth < 200) newLeftWidth = 200; if (containerWidth - newLeftWidth < 200) newLeftWidth = containerWidth - 200; leftPanel.style.flexBasis = `${(newLeftWidth / containerWidth) * 100}%`; rightPanel.style.flexBasis = `${100 - (newLeftWidth / containerWidth) * 100}%`; } function handleMouseUp() { isResizing = false; resizer.classList.remove('resizing'); document.removeEventListener('mousemove', handleMouseMove); document.removeEventListener('mouseup', handleMouseUp); } document.addEventListener('mousemove', handleMouseMove); document.addEventListener('mouseup', handleMouseUp); }); }
+    function toggleFullscreenPreview(editorType) { const container = document.querySelector(`#${editorType}-editor-page-wrapper`); const button = document.querySelector(`#${editorType}-editor-page-controls button.secondary`); container.parentElement.classList.toggle('fullscreen-preview'); const isFullscreen = container.parentElement.classList.contains('fullscreen-preview'); button.textContent = isFullscreen ? translations[currentLang].maximizePreviewActive : translations[currentLang].maximizePreview; }
+
+    // --- EDITOR LOGIC ---
+    let ebayIframeDoc, aukroIframeDoc;
+    function setupEditor(editorType, isReset = false) { const isEbay = editorType === 'ebay'; const iframe = document.getElementById(isEbay ? 'previewFrameEbay' : 'previewFrameAukro'); if (!iframe) return; let template = isEbay ? ebayTemplateHtmlString : aukroTemplateHtmlString; if (isEbay) { for (const key in adminSettings) { const placeholder = `##${key}##`; template = template.replace(new RegExp(placeholder, 'g'), adminSettings[key]); } } let doc = iframe.contentWindow.document; doc.open(); doc.write(template); doc.close(); if (isEbay) { ebayIframeDoc = doc; if (isReset) { updateEbayPreview(); } else { loadEbayInputsFromLocalStorage(); } } else { aukroIframeDoc = doc; if(isReset) { updateAukroPreview(); } else { loadAukroInputsFromLocalStorage(); } } }
+    function updateEbayPreview() { if (!ebayIframeDoc) return; for (const key in adminSettings) { const element = ebayIframeDoc.getElementById(key); if(element) { element.innerHTML = adminSettings[key].replace(/\n/g, '<br>'); } } ebayMappings.forEach(map => { const target = ebayIframeDoc.getElementById(map.tplId); if (!target) return; if (map.inputId) { const inputElement = document.getElementById(map.inputId); if (map.type === 'list') { target.innerHTML = inputElement.value.split('\n').filter(i => i.trim()).map(i => `<li>${i}</li>`).join(''); } else if (map.type === 'html') { target.innerHTML = inputElement.value; } else { target.textContent = inputElement.value; } } else if (map.editorAreaId) { const tbody = ebayIframeDoc.getElementById(map.tplId); tbody.innerHTML = ''; document.querySelectorAll(`#${map.editorAreaId} .spec-row`).forEach(row => { const param = row.querySelector('.spec-param').value.trim(); const value = row.querySelector('.spec-value').value.trim(); if (param || value) { tbody.innerHTML += `<tr><td data-label="Parameter">${param}</td><td data-label="Value">${value}</td></tr>`; } }); } }); const footerTarget = ebayIframeDoc.getElementById('tpl_footer_text'); if (footerTarget) { const year = document.getElementById('input_footer_year').value.trim(); const company = document.getElementById('input_footer_company_name').value.trim(); footerTarget.innerHTML = `&copy; ${year} ${company}. All rights reserved. | Created by Covenant666`; } saveEbayInputsToLocalStorage(); }
+    function saveEbayInputsToLocalStorage() { const data = {}; ebayMappings.forEach(map => { if (map.inputId) data[map.inputId] = document.getElementById(map.inputId).value; }); data['input_product_ean'] = document.getElementById('input_product_ean').value; data['input_product_pn_sku'] = document.getElementById('input_product_pn_sku').value; data['tech_specs_editor_area'] = Array.from(document.querySelectorAll('#tech_specs_editor_area .spec-row')).map(row => ({ param: row.querySelector('.spec-param').value, value: row.querySelector('.spec-value').value })); data['input_footer_year'] = document.getElementById('input_footer_year').value; data['input_footer_company_name'] = document.getElementById('input_footer_company_name').value; localStorage.setItem(ebayLocalStorageKey, JSON.stringify(data)); }
+    function loadEbayInputsFromLocalStorage() { const dataString = localStorage.getItem(ebayLocalStorageKey); if(!dataString) { updateEbayPreview(); return; } const data = JSON.parse(dataString); ebayMappings.forEach(map => { if (map.inputId && data[map.inputId]) document.getElementById(map.inputId).value = data[map.inputId]; }); document.getElementById('input_product_ean').value = data['input_product_ean'] || ''; document.getElementById('input_product_pn_sku').value = data['input_product_pn_sku'] || ''; if (data['tech_specs_editor_area']) { document.getElementById('tech_specs_editor_area').innerHTML = ''; data['tech_specs_editor_area'].forEach(spec => addEbayTechSpecRow(spec.param, spec.value)); } document.getElementById('input_footer_year').value = data['input_footer_year'] || new Date().getFullYear(); document.getElementById('input_footer_company_name').value = data['input_footer_company_name'] || 'Your Company LLC'; updateEbayPreview(); }
+    function clearEbayFieldsAndStorage() { if (!confirm(translations[currentLang].confirmClearEbay)) return; localStorage.removeItem(ebayLocalStorageKey); ebayMappings.forEach(map => { if (map.inputId) document.getElementById(map.inputId).value = ''; }); document.getElementById('input_product_ean').value = ''; document.getElementById('input_product_pn_sku').value = ''; document.getElementById('tech_specs_editor_area').innerHTML = ''; document.getElementById('input_footer_year').value = new Date().getFullYear(); document.getElementById('input_footer_company_name').value = 'Your Company LLC'; updateEbayPreview(); }
+    function addEbayTechSpecRow(param = '', val = '') {
+        const container = document.getElementById('tech_specs_editor_area');
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'spec-row';
+        rowDiv.innerHTML = `<input type="text" class="spec-param" placeholder="${translations[currentLang].specParamPlaceholder}" value="${param}"><input type="text" class="spec-value" placeholder="${translations[currentLang].specValuePlaceholder}" value="${val}"><button type="button" class="small-action danger">X</button>`;
+        rowDiv.querySelector('button').onclick = () => { rowDiv.remove(); updateEbayPreview(); };
+        rowDiv.querySelectorAll('input').forEach(input => input.oninput = updateEbayPreview);
+        container.appendChild(rowDiv);
+    }
+    function copyEbayHtmlToClipboard() { const fullHtml = "<!DOCTYPE html>\n" + ebayIframeDoc.documentElement.outerHTML; navigator.clipboard.writeText(fullHtml).then(() => { alert('HTML kód eBay šablony byl zkopírován!'); }).catch(err => alert('Chyba při kopírování.')); }
+    function makeSloganBold() { const textarea = document.getElementById('input_slogan'); const start = textarea.selectionStart; const end = textarea.selectionEnd; const selectedText = textarea.value.substring(start, end); if (selectedText) { const newText = `<strong>${selectedText}</strong>`; textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end); updateEbayPreview(); } }
+    function updateAukroPreview() { if(!aukroIframeDoc) return; aukroMappings.forEach(map => { const target = aukroIframeDoc.getElementById(map.tplId); if(!target) return; if(map.inputId) { const inputElement = document.getElementById(map.inputId); target.textContent = inputElement.value; } else if (map.editorAreaId) { const tbody = aukroIframeDoc.getElementById(map.tplId); tbody.innerHTML = ''; document.querySelectorAll(`#${map.editorAreaId} .spec-row`).forEach(row => { const param = row.querySelector('.spec-param').value.trim(); const value = row.querySelector('.spec-value').value.trim(); if(param || value) tbody.innerHTML += `<tr><td><span class="math-inline">\{param\}</td\><td\></span>{value}</td></tr>`; }); } }); saveAukroInputsToLocalStorage(); }
+    function saveAukroInputsToLocalStorage() { const data = {}; aukroMappings.forEach(map => { if (map.inputId) data[map.inputId] = document.getElementById(map.inputId).value; }); data['aukro_tech_specs_editor_area'] = Array.from(document.querySelectorAll('#aukro_tech_specs_editor_area .spec-row')).map(row => ({ param: row.querySelector('.spec-param').value, value: row.querySelector('.spec-value').value })); localStorage.setItem(aukroLocalStorageKey, JSON.stringify(data)); }
+    function loadAukroInputsFromLocalStorage() { const dataString = localStorage.getItem(aukroLocalStorageKey); if(!dataString) { updateAukroPreview(); return; } const data = JSON.parse(dataString); aukroMappings.forEach(map => { if (map.inputId && data[map.inputId]) document.getElementById(map.inputId).value = data[map.inputId]; }); if (data['aukro_tech_specs_editor_area']) { document.getElementById('aukro_tech_specs_editor_area').innerHTML = ''; data['aukro_tech_specs_editor_area'].forEach(spec => addAukroTechSpecRow(spec.param, spec.value)); } updateAukroPreview(); }
+    function clearAukroFieldsAndStorage() { if (!confirm(translations[currentLang].confirmClearAukro)) return; localStorage.removeItem(aukroLocalStorageKey); aukroMappings.forEach(map => { if (map.inputId) document.getElementById(map.inputId).value = ''; }); document.getElementById('aukro_tech_specs_editor_area').innerHTML = ''; updateAukroPreview(); }
+    function addAukroTechSpecRow(param = '', val = '') {
+        const container = document.getElementById('aukro_tech_specs_editor_area');
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'spec-row';
+        rowDiv.innerHTML = `<input type="text" class="spec-param" placeholder="${translations[currentLang].specParamPlaceholder}" value="${param}"><input type="text" class="spec-value" placeholder="${translations[currentLang].specValuePlaceholder}" value="${val}"><button type="button" class="small-action danger">X</button>`;
+        rowDiv.querySelector('button').onclick = () => { rowDiv.remove(); updateAukroPreview(); };
+        rowDiv.querySelectorAll('input').forEach(input => input.oninput = updateAukroPreview);
+        container.appendChild(rowDiv);
+    }
+    function copyAukroHtmlToClipboard() { const fullHtml = "<!DOCTYPE html>\n" + aukroIframeDoc.documentElement.outerHTML; navigator.clipboard.writeText(fullHtml).then(() => { alert('HTML kód Aukro šablony byl zkopírován!'); }).catch(err => alert('Chyba při kopírování.')); }
+    function downloadTemplate(editorType) { const isEbay = editorType === 'ebay'; const iframeDoc = isEbay ? ebayIframeDoc : aukroIframeDoc; const productName = document.getElementById(isEbay ? 'input_product_name' : 'input_aukro_product_name').value.trim().replace(/[^a-z0-9]/gi, '_'); const fileName = `<span class="math-inline">\{productName \|\| 'template'\}\_</span>{editorType}.html`; const fullHtml = "<!DOCTYPE html>\n" + iframeDoc.documentElement.outerHTML; const blob = new Blob([fullHtml], { type: 'text/html' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = fileName; document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+    
+    // --- TEMPLATE ADMIN SETTINGS ---
+    function getDefaultAdminSettings() { return { admin_header_features: 'Key Features', admin_header_specs: 'Technical Specifications', admin_header_compat: 'Compatibility', admin_header_note: 'Note', admin_header_shipping: 'Shipping', admin_text_shipping: 'Your order will be carefully packed and shipped using reliable carriers. We aim to dispatch all orders as quickly as possible after payment receipt. Full details on available shipping methods, costs, and estimated delivery times can be found in the "Shipping and Payments" section higher up on this product page.', admin_header_returns: 'Returns', admin_text_returns: 'If you are not satisfied with your purchase, please <strong>contact us first</strong> via eBay messages so we can assist you. We are committed to resolving any issues quickly and efficiently. You can still initiate a formal return process through the eBay platform within the specified return period. Please ensure the item is returned in its original condition. Detailed information about our return policy can be found in the "Return Policy" section on this product page.', admin_header_contact: 'Contact Us', admin_text_contact: 'Have questions about the product or your order? The quickest and best way to contact us is via messages on the eBay platform. We aim to respond to all messages as quickly as possible during our business hours: Monday - Friday, 9:00 - 18:00. If you contact us during the weekend, please await a response until Monday or Tuesday.', admin_header_about: 'About Us', admin_text_about: 'Our store has been operating in the market for several years and we are excited to now expand our offering to the eBay platform! Our goal is to provide customers with high-quality SSD drives at affordable prices, and we always do our utmost for their satisfaction. We are available on business days from Monday to Friday, from 9:00 to 18:00. If you contact us during the weekend, please await our response until Monday or Tuesday.', admin_header_ticker: 'Delivery Time', admin_text_ticker: 'USA - 10 days • Canada - 13 days • Germany - 5 days • France - 5 days • Great Britain - 6 days • Australia - 17 days • China - 18 days • Japan - 10 days • India - 13 days • Brazil - 15 days • Russia - 10 days • Spain - 6 days • Italy - 6 days • Poland - 4 days • Slovakia - 4 days • Hungary - 5 days • Česká republika - 1-2 dny • Slovensko - 2-3 dny', admin_text_disclaimer: 'Delivery times are for reference only.' }; }
+    function loadAdminSettings() { const storedSettings = localStorage.getItem(adminSettingsKey); adminSettings = storedSettings ? JSON.parse(storedSettings) : getDefaultAdminSettings(); adminSettingFields.forEach(id => { const key = id.replace('input_', ''); const element = document.getElementById(id); if (element && adminSettings[key]) { element.value = adminSettings[key]; } }); }
+    function saveAdminSettings() { const newSettings = {}; adminSettingFields.forEach(id => { const key = id.replace('input_', ''); const element = document.getElementById(id); if (element) { newSettings[key] = element.value; } }); localStorage.setItem(adminSettingsKey, JSON.stringify(newSettings)); adminSettings = newSettings; alert(translations[currentLang].adminSettingsSaved); setupEditor('ebay', true); }
+    function resetAdminSettings() { if (confirm(translations[currentLang].confirmResetAdmin)) { localStorage.removeItem(adminSettingsKey); loadAdminSettings(); setupEditor('ebay', true); alert(translations[currentLang].adminSettingsReset); } }
+
+    // --- AI & FILLING LOGIC ---
+    async function sendMessage() { const messageText = ui.chatInput.value.trim(); if ((!messageText && !chatState.imageData) || !chatData.activeChatId) return; if (!GEMINI_API_KEY) { addMessageToChatUI('Chyba: API klíč pro Gemini není nastaven. Prosím, nastavte ho na úvodní obrazovce.', 'error-message', false); return; } const activeChat = chatData.chats[chatData.activeChatId]; const userMessage = { role: 'user', parts: [{ text: messageText }] }; if (chatState.imageData) { userMessage.parts.push({ inlineData: { mimeType: chatState.imageMimeType, data: chatState.imageData } }); } activeChat.history.push(userMessage); const actionButtons = ui.chatContainer.querySelector('.action-buttons-container'); if (actionButtons) actionButtons.remove(); addMessageToChatUI(messageText, 'user'); if (activeChat.history.length < 2 && !activeChat.isContextual && activeChat.title === 'Vítejte! 👋') { activeChat.title = messageText.substring(0, 25) + (messageText.length > 25 ? '...' : ''); renderChatList(); ui.chatTitleHeader.textContent = activeChat.title; } saveChatData(); ui.chatInput.value = ''; removeImage(); ui.sendChatBtn.disabled = true; ui.sendChatBtn.textContent = '...'; const modelMessageDiv = document.createElement('div'); modelMessageDiv.className = 'chat-message model-message'; const contentSpan = document.createElement('span'); modelMessageDiv.appendChild(contentSpan); ui.chatContainer.appendChild(modelMessageDiv); ui.chatContainer.scrollTop = ui.chatContainer.scrollHeight; const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent?key=${GEMINI_API_KEY}&alt=sse`; const contents = activeChat.history.filter(m => !m.isTutorial); try { const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents }) }); if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error.message); } const reader = response.body.getReader(); const decoder = new TextDecoder(); let fullResponseText = ""; while (true) { const { done, value } = await reader.read(); if (done) break; const chunk = decoder.decode(value); const lines = chunk.split('\n'); for (const line of lines) { if (line.startsWith('data: ')) { try { const parsed = JSON.parse(line.substring(6)); const textPart = parsed.candidates[0]?.content?.parts[0]?.text || ''; if (textPart) { fullResponseText += textPart; contentSpan.innerHTML = markdownToHtml(fullResponseText); ui.chatContainer.scrollTop = ui.chatContainer.scrollHeight; } } catch (e) { /* Ignore parsing errors */ } } } } activeChat.history.push({ role: 'model', parts: [{ text: fullResponseText }] }); if (fullResponseText.trim().length > 0) { const insertBtn = document.createElement('button'); insertBtn.className = 'insert-text-btn'; insertBtn.textContent = translations[currentLang].insertText; insertBtn.onclick = (e) => showInsertMenu(e, fullResponseText, insertBtn); modelMessageDiv.appendChild(insertBtn); } saveChatData(); } catch (error) { console.error("Gemini API Error:", error); contentSpan.innerHTML = `Nastala chyba: ${error.message}`; modelMessageDiv.classList.add('error-message'); } finally { ui.sendChatBtn.disabled = false; ui.sendChatBtn.textContent = translations[currentLang].send; } }
+    function handleImageUpload(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onloadend = () => { chatState.imageData = reader.result.split(',')[1]; chatState.imageMimeType = file.type; ui.imagePreview.src = reader.result; ui.imagePreviewFilename.textContent = file.name; ui.imagePreviewContainer.style.display = 'flex'; }; reader.readAsDataURL(file); }
+    function removeImage() { chatState.imageData = null; chatState.imageMimeType = null; ui.uploadImageInput.value = ''; ui.imagePreviewContainer.style.display = 'none'; }
+    async function fillAllWithAI() { const productName = document.getElementById('input_product_name').value.trim(); if (!productName) { alert(translations[currentLang].productNamePlaceholder); return; } const ean = document.getElementById('input_product_ean').value.trim(); const pn_sku = document.getElementById('input_product_pn_sku').value.trim(); if (!ean && !pn_sku) { const proceed = confirm("Pro dosažení co nejpřesnějších výsledků doporučujeme vyplnit EAN/UPC nebo PN/SKU produktu.\n\nBez těchto údajů nemusí být vygenerovaný obsah zcela přesný.\nPřejete si přesto pokračovat?"); if (!proceed) { return; } } if (!GEMINI_API_KEY) { alert('Chyba: API klíč pro Gemini není nastaven.'); return; } const btn = document.getElementById('fill-with-ai-btn'); btn.disabled = true; btn.textContent = 'Generuji obsah...'; const languageInstruction = currentLang === 'cs' ? 'ČEŠTINĚ' : 'ANGLIČTINĚ'; let productIdentifiers = ''; if (ean) productIdentifiers += `\nEAN/UPC: "${ean}"`; if (pn_sku) productIdentifiers += `\nPart Number/SKU: "${pn_sku}"`; const prompt = `Na základě následujících informací o produktu:\nNázev produktu: "<span class="math-inline">\{productName\}"</span>{productIdentifiers}\n\nVygeneruj kompletní obsah pro produktovou šablonu na eBay. Obsah musí být striktně v ${languageInstruction}. Tvá odpověď MUSÍ být POUZE JSON objekt a nic jiného. Nepřidávej žádný text před nebo za JSON, ani nepoužívej Markdown formátování jako \`\`\`json. Struktura JSON musí být následující:\n{ "slogan": "Krátký marketingový slogan v HTML formátu. Například '<strong>Your Text Here</strong>'.", "overview": "Stručný přehled produktu, klíčové vlastnosti a scénáře použití. Dva až tři odstavce.", "features": "5 až 7 klíčových vlastností produktu. Každá vlastnost na novém řádku, oddělené znakem \\n.", "compatibility": "Informace o kompatibilitě (např. operační systémy). Každá položka na novém řádku, oddělené znakem \\n.", "note_text": "Důležitá poznámka nebo varování pro zákazníka.", "tech_specs": [ { "param": "Název technického parametru", "value": "Hodnota parametru" }, { "param": "Další parametr", "value": "Další hodnota" } ] }`; const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`; try { const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }); if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error.message); } const data = await response.json(); let jsonString = data.candidates[0].content.parts[0].text; const firstBracket = jsonString.indexOf('{'); const lastBracket = jsonString.lastIndexOf('}'); if (firstBracket === -1 || lastBracket === -1) { throw new Error("AI nevrátila platný JSON objekt."); } jsonString = jsonString.substring(firstBracket, lastBracket + 1); const content = JSON.parse(jsonString); document.getElementById('input_slogan').value = content.slogan || ''; document.getElementById('input_overview').value = content.overview || ''; document.getElementById('input_features').value = content.features || ''; document.getElementById('input_compatibility').value = content.compatibility || ''; document.getElementById('input_note_text').value = content.note_text || ''; const specsContainer = document.getElementById('tech_specs_editor_area'); specsContainer.innerHTML = ''; if (content.tech_specs && Array.isArray(content.tech_specs)) { content.tech_specs.forEach(spec => { addEbayTechSpecRow(spec.param, spec.value); }); } updateEbayPreview(); alert('Obsah byl úspěšně vygenerován a vyplněn!'); } catch (error) { console.error("AI Fill Error:", error); alert(`Při generování obsahu nastala chyba: ${error.message}\n\nZkuste to prosím znovu. Pokud problém přetrvává, AI možná nevrátila správný formát.`); } finally { btn.disabled = false; btn.textContent = translations[currentLang].fillWithAI; } }
+    async function fillAukroWithAI() { const productName = document.getElementById('input_aukro_product_name').value.trim(); if (!productName) { alert('Zadejte prosím název produktu.'); return; } if (!GEMINI_API_KEY) { alert('Chyba: API klíč pro Gemini není nastaven.'); return; } const btn = document.getElementById('fill-aukro-with-ai-btn'); btn.disabled = true; btn.textContent = 'Generuji obsah...'; const languageInstruction = currentLang === 'cs' ? 'ČEŠTINĚ' : 'ANGLIČTINĚ'; const prompt = `Na základě následujícího názvu produktu: "${productName}", vygeneruj kompletní obsah pro produktovou šablonu na Aukro. Obsah musí být striktně v ${languageInstruction}. Tvá odpověď MUSÍ být POUZE JSON objekt a nic jiného. Nepřidávej žádný text před nebo za JSON, ani nepoužívej Markdown formátování jako \`\`\`json. Struktura JSON musí být následující:\n{ "description": "Podrobný popis produktu, jeho vlastnosti a výhody.", "compatibility": "Informace o kompatibilitě (např. s jinými zařízeními nebo systémy).", "note": "Doplňující poznámka nebo upozornění k produktu.", "tech_specs": [ { "param": "Název technického parametru", "value": "Hodnota parametru" }, { "param": "Další parametr", "value": "Další hodnota" } ] }`; const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`; try { const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }); if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error.message); } const data = await response.json(); let jsonString = data.candidates[0].content.parts[0].text; const firstBracket = jsonString.indexOf('{'); const lastBracket = jsonString.lastIndexOf('}'); if (firstBracket === -1 || lastBracket === -1) { throw new Error("AI nevrátila platný JSON objekt."); } jsonString = jsonString.substring(firstBracket, lastBracket + 1); const content = JSON.parse(jsonString); document.getElementById('input_aukro_description').value = content.description || ''; document.getElementById('input_aukro_compatibility').value = content.compatibility || ''; document.getElementById('input_aukro_note').value = content.note || ''; const specsContainer = document.getElementById('aukro_tech_specs_editor_area'); specsContainer.innerHTML = ''; if (content.tech_specs && Array.isArray(content.tech_specs)) { content.tech_specs.forEach(spec => { addAukroTechSpecRow(spec.param, spec.value); }); } updateAukroPreview(); alert('Obsah pro Aukro byl úspěšně vygenerován a vyplněn!'); } catch (error) { console.error("Aukro AI Fill Error:", error); alert(`Při generování obsahu pro Aukro nastala chyba: ${error.message}\n\nZkuste to prosím znovu.`); } finally { btn.disabled = false; btn.textContent = translations[currentLang].fillWithAI; } }
+
+    // --- AI CHAT ENGINE ---
+    function markdownToHtml(text) { return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); }
+    function saveChatData() { localStorage.setItem(GEMINI_CHAT_DATA_LS_KEY, JSON.stringify(chatData)); }
+    function initializeChat() { const storedData = localStorage.getItem(GEMINI_CHAT_DATA_LS_KEY); let isFirstEverLaunch = !storedData; if (storedData) { chatData = JSON.parse(storedData); } if (Object.keys(chatData).length === 0 || Object.keys(chatData.chats).length === 0) { isFirstEverLaunch = true; chatData = { activeChatId: null, chats: {} }; createNewChat(false, translations[currentLang].welcomeChatTitle); } renderChatList(); if (chatData.activeChatId && chatData.chats[chatData.activeChatId]) { switchToChat(chatData.activeChatId); } else if (Object.keys(chatData.chats).length > 0) { switchToChat(Object.keys(chatData.chats).sort((a, b) => b.split('_')[1] - a.split('_')[1])[0]); } if (isFirstEverLaunch) { showTutorial(); } }
+    function showTutorial() { if (chatData.activeChatId) { const activeChat = chatData.chats[chatData.activeChatId]; if (activeChat.history.some(msg => msg.isTutorial)) return; const tutorialMessage = { role: 'model', parts: [{ text: translations[currentLang].TUTORIAL_TEXT || 'Welcome!' }], isTutorial: true }; activeChat.history.push(tutorialMessage); addMessageToChatUI(tutorialMessage.parts[0].text, 'model', false); saveChatData(); } }
+function renderChatList() {
+    ui.chatList.innerHTML = '';
+    const sortedChatIds = Object.keys(chatData.chats).sort((a, b) => b.split('_')[1] - a.split('_')[1]);
+    sortedChatIds.forEach(chatId => {
+        const chat = chatData.chats[chatId];
+        const li = document.createElement('li');
+        li.dataset.chatId = chatId;
+        if (chatId === chatData.activeChatId) li.classList.add('active-chat');
+
+        // OPRAVA: Změněno {chat.title} na ${chat.title} a zajištěny zpětné uvozovky (``)
+        li.innerHTML = `<span class="chat-item-title">${chat.title}</span><div class="chat-item-controls"><button title="${translations[currentLang].rename}">✏️</button><button title="${translations[currentLang].delete}">🗑️</button></div>`;
+        
+        li.addEventListener('click', (e) => {
+            // Získání akce z titulku tlačítka pro vícejazyčnou podporu
+            const button = e.target.closest('button');
+            if (button) {
+                const actionTitle = button.title;
+                 if (actionTitle === translations[currentLang].delete) {
+                    deleteChat(chatId);
+                    e.stopPropagation();
+                } else if (actionTitle === translations[currentLang].rename) {
+                    renameChat(chatId);
+                    e.stopPropagation();
+                } else {
+                    switchToChat(chatId);
+                }
+            } else {
+                 switchToChat(chatId);
+            }
+        });
+        ui.chatList.appendChild(li);
+    });
+}
+    function renderChatHistory(chatId) { const chat = chatData.chats[chatId]; ui.chatContainer.innerHTML = ''; if (!chat) return; const messagesToShow = chat.isContextual ? chat.history.slice(2) : chat.history; if (chat.isContextual && messagesToShow.length === 0) { const actionsHtml = `<div class="action-buttons-container"><button class="action-btn" data-prompt="Na základě názvu produktu mi navrhni poutavý slogan v angličtině.">Navrhnout slogan</button><button class="action-btn" data-prompt="Na základě názvu produktu mi napiš stručný přehled v angličtině.">Napsat přehled</button></div>`; ui.chatContainer.insertAdjacentHTML('afterbegin', actionsHtml); document.querySelectorAll('.action-btn').forEach(btn => btn.addEventListener('click', () => { ui.chatInput.value = btn.dataset.prompt; sendMessage(); })); } messagesToShow.forEach(msg => addMessageToChatUI(msg.parts[0].text, msg.role, !msg.isTutorial)); ui.chatContainer.scrollTop = ui.chatContainer.scrollHeight; }
+    function refreshChat() { if (chatData.activeChatId) { renderChatHistory(chatData.activeChatId); } }
+    function toggleMaximizeChat() { ui.chatModal.classList.toggle('maximized'); }
+    function switchToChat(chatId) { if (!chatData.chats[chatId]) { initializeChat(); return; } chatData.activeChatId = chatId; ui.chatTitleHeader.textContent = chatData.chats[chatId].title; renderChatHistory(chatId); renderChatList(); saveChatData(); }
+    function createNewChat(switchTo = true, title = translations[currentLang].newChatName) { const newChatId = `chat_${Date.now()}`; chatData.chats[newChatId] = { id: newChatId, title: title, history: [], isContextual: false }; if (switchTo) { switchToChat(newChatId); } else { chatData.activeChatId = newChatId; saveChatData(); } renderChatList(); }
+    function deleteChat(chatId) { if (!confirm(translations[currentLang].chatDeleteConfirm(chatData.chats[chatId].title))) return; delete chatData.chats[chatId]; if (chatData.activeChatId === chatId) { chatData.activeChatId = null; } saveChatData(); const remainingChats = Object.keys(chatData.chats); if(remainingChats.length > 0) { switchToChat(remainingChats.sort((a, b) => b.split('_')[1] - a.split('_')[1])[0]); } else { initializeChat(); } renderChatList(); }
+    function renameChat(chatId) { const newTitle = prompt(translations[currentLang].chatRenamePrompt(chatData.chats[chatId].title), chatData.chats[chatId].title); if (newTitle && newTitle.trim()) { chatData.chats[chatId].title = newTitle.trim(); saveChatData(); switchToChat(chatId); } }
+    function openChatBubble() { if (currentVisiblePage === 'editor' && document.getElementById('input_product_name').value.trim()) { openChatWithContext('ebay'); } else if (currentVisiblePage === 'aukro-editor' && document.getElementById('input_aukro_product_name').value.trim()) { openChatWithContext('aukro'); } else { ui.chatModal.classList.add('visible'); } }
+    function openChatWithContext(editorType) { const isEbay = editorType === 'ebay'; const activeMappings = isEbay ? ebayMappings : aukroMappings; const productNameInputId = isEbay ? 'input_product_name' : 'input_aukro_product_name'; activeMappings.forEach(map => { if (map.inputId) { const el = document.getElementById(map.inputId); if (el) versionManager.save(map.inputId, el.value); } }); const context = activeMappings.map(map => { if (map.inputId) { const label = document.querySelector(`label[for='${map.inputId}']`); const el = document.getElementById(map.inputId); return (label && el) ? `<span class="math-inline">\{label\.textContent\.replace\(' \*',''\)\.replace\('\:', ''\)\}\: "</span>{el.value}"` : ''; } return ''; }).filter(Boolean).join('\n'); const lang = isEbay ? 'ANGLIČTINĚ' : 'ČEŠTINĚ'; const platform = isEbay ? 'eBay' : 'Aukro'; const systemPrompt = `Jsi odborný asistent pro tvorbu produktových nabídek na ${platform}. Tvá úloha je pomáhat uživateli tvořit co nejlepší obsah. Uživatel s tebou bude komunikovat ČESKY, ale veškerý obsah, který vygeneruješ (popisky, vlastnosti, slogany atd.), musí být striktně v <span class="math-inline">\{lang\}\. Toto je aktuální stav editoru\:\\n</span>{context}\n\nAnalyzuj ho a buď připraven pomoci.`; const productName = document.getElementById(productNameInputId).value.trim(); const chatTitle = `<span class="math-inline">\{productName\} \(</span>{platform})` || `Kontextová nápověda (${platform})`; const existingContextChat = Object.values(chatData.chats).find(c => c.isContextual && c.title === chatTitle); if (existingContextChat) { switchToChat(existingContextChat.id); } else { const newChatId = `chat_${Date.now()}`; const initialHistory = [ { role: 'user', parts: [{ text: systemPrompt }] }, { role: 'model', parts: [{ text: `OK, rozumím. Jsem připraven pomoci s obsahem pro ${platform} v ${lang}.` }] } ]; chatData.chats[newChatId] = { id: newChatId, title: chatTitle, history: initialHistory, isContextual: true }; switchToChat(newChatId); } ui.chatModal.classList.add('visible'); }
+    function addMessageToChatUI(message, role, showInsertButton = true) { const messageDiv = document.createElement('div'); messageDiv.className = `chat-message ${role}-message`; const contentSpan = document.createElement('span'); contentSpan.innerHTML = markdownToHtml(message); messageDiv.appendChild(contentSpan); if (role === 'model' && message.trim().length > 0 && showInsertButton) { const insertBtn = document.createElement('button'); insertBtn.className = 'insert-text-btn'; insertBtn.textContent = translations[currentLang].insertText; insertBtn.onclick = (e) => showInsertMenu(e, message, insertBtn); messageDiv.appendChild(insertBtn); } ui.chatContainer.appendChild(messageDiv); ui.chatContainer.scrollTop = ui.chatContainer.scrollHeight; }
+    function showInsertMenu(event, textToInsert, button) { event.stopPropagation(); closeAllInsertMenus(); const menu = document.createElement('div'); menu.className = 'insert-text-menu'; const activeMappings = (currentVisiblePage === 'editor') ? ebayMappings : aukroMappings; activeMappings.forEach(map => { if (!map.label || map.type === 'table') return; const btn = document.createElement('button'); btn.textContent = map.label; btn.onclick = () => { if(map.inputId) { const input = document.getElementById(map.inputId); input.value = textToInsert; input.dispatchEvent(new Event('input', { bubbles: true })); } closeAllInsertMenus(); }; menu.appendChild(btn); }); document.body.appendChild(menu); menu.style.display = 'block'; const rect = button.getBoundingClientRect(); menu.style.left = `${rect.right - menu.offsetWidth}px`; menu.style.top = `${rect.top - menu.offsetHeight - 5}px`; setTimeout(() => { document.addEventListener('click', closeAllInsertMenus, { once: true }); }, 0); }
+    function closeAllInsertMenus() { document.querySelectorAll('.insert-text-menu').forEach(menu => menu.remove()); }
+    
+    // --- Currency Converter ---
+    async function fetchAndUpdateRates() { const lastUpdatedEl = document.getElementById('converter-last-updated'); const updateBtn = document.getElementById('update-rates-btn'); lastUpdatedEl.textContent = 'Aktualizuji kurzy...'; if(updateBtn) updateBtn.disabled = true; try { const response = await fetch(`https://api.frankfurter.app/latest?t=${new Date().getTime()}`); if (!response.ok) throw new Error('Odpověď sítě nebyla v pořádku.'); const data = await response.json(); currencyRates = data.rates; currencyRates[data.base] = 1; lastUpdatedEl.textContent = `Kurzy aktuální (${new Date().toLocaleTimeString('cs-CZ')}), platné ke dni: ${data.date}`; convertCurrency(); } catch (error) { console.error('Nepodařilo se načíst kurzy měn:', error); lastUpdatedEl.textContent = 'Chyba: Nepodařilo se aktualizovat kurzy.'; } finally { if(updateBtn) updateBtn.disabled = false; } }
+    async function initializeCurrencyConverter() {
+        const fromSelect = document.getElementById('converter-from');
+        document.getElementById('converter-amount').addEventListener('input', convertCurrency);
+        fromSelect.addEventListener('change', convertCurrency);
+        document.getElementById('update-rates-btn').addEventListener('click', fetchAndUpdateRates);
+        try {
+            const response = await fetch('https://api.frankfurter.app/currencies');
+            if (!response.ok) throw new Error('Nepodařilo se načíst seznam měn.');
+            const currenciesData = await response.json();
+            const currencies = Object.keys(currenciesData).sort();
+            currencies.forEach(currency => {
+                fromSelect.innerHTML += `<option value="${currency}">${currenciesData[currency]} (${currency})</option>`;
+            });
+            fromSelect.value = 'CZK';
+        } catch (error) {
+            console.error(error);
+            fromSelect.innerHTML = '<option>Chyba</option>';
+        }
+        await fetchAndUpdateRates();
+    }
+    function convertCurrency() { const amountInput = document.getElementById('converter-amount'); if (!amountInput) return; const amount = parseFloat(amountInput.value); const fromCurrency = document.getElementById('converter-from').value; const targetCurrencies = ['USD', 'EUR', 'GBP']; if (isNaN(amount) || !fromCurrency || Object.keys(currencyRates).length === 0) { targetCurrencies.forEach(currency => { const resultSpan = document.getElementById(`result-${currency.toLowerCase()}`); if(resultSpan) resultSpan.textContent = '-'; }); return; } const amountInEur = amount / currencyRates[fromCurrency]; targetCurrencies.forEach(currency => { const convertedAmount = amountInEur * currencyRates[currency]; const resultSpan = document.getElementById(`result-${currency.toLowerCase()}`); if(resultSpan) { resultSpan.textContent = `${convertedAmount.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; } }); }
+
+    // --- Image Converter ---
+    function initializeImageConverter() {
+        const uploadInput = document.getElementById('image-converter-upload');
+        const preview = document.getElementById('image-converter-preview');
+        const info = document.getElementById('image-converter-info');
+        const downloadBtn = document.getElementById('image-converter-download-btn');
+
+        let originalFile = null;
+
+        uploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                originalFile = file;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    preview.src = event.target.result;
+                    preview.style.display = 'block';
+                    info.textContent = `Soubor: ${file.name}, Velikost: ${(file.size / 1024).toFixed(2)} KB`;
+                    downloadBtn.disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if (!originalFile || !preview.src) return;
+            
+            const format = document.getElementById('image-converter-format').value;
+            const quality = parseFloat(document.getElementById('image-converter-quality').value);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                const dataUrl = canvas.toDataURL(format, quality);
+                const link = document.createElement('a');
+                const extension = format.split('/')[1];
+                const baseName = originalFile.name.split('.').slice(0, -1).join('.');
+                
+                // OPRAVENO: Správné sestavení názvu souboru
+                link.download = `${baseName}_converted.${extension}`;
+                
+                link.href = dataUrl;
+                link.click();
+            };
+            img.src = preview.src;
+        });
+    }
+
+    // --- Invoice Generator ---
+    let invoiceItems = [];
+    let currentInvoiceLang = 'cs';
+
+    function initializeInvoiceGenerator() {
+        // Set default dates
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('invoice-issue-date').value = today;
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 14);
+        document.getElementById('invoice-due-date').value = dueDate.toISOString().split('T')[0];
+
+        // Add initial item
+        addInvoiceItem();
+
+        // Add event listeners
+        document.getElementById('invoice-add-item-btn').addEventListener('click', addInvoiceItem);
+        document.getElementById('invoice-lang-select').addEventListener('change', (e) => {
+            currentInvoiceLang = e.target.value;
+            updateInvoicePreview();
+        });
+        document.getElementById('invoice-print-btn').addEventListener('click', () => {
+            const iframe = document.getElementById('invoice-preview-iframe');
+            if (iframe) {
+                iframe.contentWindow.focus(); //
+                iframe.contentWindow.print();
+            }
+        });
+
+        // Add listeners to all inputs to update preview on change
+        document.querySelectorAll('.invoice-input').forEach(input => {
+            input.addEventListener('input', updateInvoicePreview);
+        });
+
+        updateInvoicePreview(); // Initial render
+    }
+
+    function addInvoiceItem(desc = '', qty = 1, price = 0) {
+        const tbody = document.getElementById('invoice-items-tbody');
+        const itemId = `item_${Date.now()}`;
+        const item = { id: itemId, desc, qty, price };
+        invoiceItems.push(item);
+        
+        const row = document.createElement('tr');
+        row.id = itemId;
+        row.innerHTML = `
+            <td><input type="text" class="invoice-item-input" data-field="desc" placeholder="${translations[currentLang].invoiceItemDesc}" value="${desc}"></td>
+            <td><input type="number" class="invoice-item-input" data-field="qty" value="${qty}" style="width: 70px;"></td>
+            <td><input type="number" class="invoice-item-input" data-field="price" value="${price}"></td>
+            <td class="item-total">0.00</td>
+            <td><button class="small-action danger">X</button></td>
+        `;
+        
+        row.querySelector('button').addEventListener('click', () => {
+            removeInvoiceItem(itemId);
+        });
+        
+        row.querySelectorAll('.invoice-item-input').forEach(input => {
+            input.addEventListener('input', () => {
+                updateInvoiceItem(itemId, input.dataset.field, input.value);
+            });
+        });
+
+        tbody.appendChild(row);
+        updateInvoicePreview();
+    }
+
+    function removeInvoiceItem(itemId) {
+        invoiceItems = invoiceItems.filter(item => item.id !== itemId);
+        document.getElementById(itemId).remove();
+        updateInvoicePreview();
+    }
+    
+    function updateInvoiceItem(itemId, field, value) {
+        const item = invoiceItems.find(i => i.id === itemId);
+        if(item) {
+            item[field] = value;
+            updateInvoicePreview();
+        }
+    }
+
+    function updateInvoicePreview() {
+        const iframe = document.getElementById('invoice-preview-iframe');
+        if (!iframe) return;
+
+        let template = invoiceTemplateStrings[currentInvoiceLang];
+        
+        const formatNumber = (num) => parseFloat(num || 0).toLocaleString(currentInvoiceLang === 'cs' ? 'cs-CZ' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        // Replace placeholders
+        document.querySelectorAll('.invoice-input').forEach(input => {
+            const placeholder = `##${input.id.replace('invoice-', '').toUpperCase().replace('-', '_')}##`;
+            const value = input.type === 'date' ? new Date(input.value).toLocaleDateString(currentInvoiceLang === 'cs' ? 'cs-CZ' : 'en-CA') : input.value;
+            template = template.replace(new RegExp(placeholder, 'g'), value || ' ');
+        });
+
+        // Items and Totals
+        let itemsHtml = '';
+        let subtotal = 0;
+        invoiceItems.forEach(item => {
+            const total = (item.qty || 0) * (item.price || 0);
+            subtotal += total;
+            document.querySelector(`#${item.id} .item-total`).textContent = formatNumber(total);
+            itemsHtml += `
+                <tr>
+                    <td class="item-desc">${item.desc}</td>
+                    <td>${item.qty}</td>
+                    <td>${formatNumber(item.price)}</td>
+                    <td>${formatNumber(total)}</td>
+                </tr>`;
+        });
+        
+        // Simple tax calculation (e.g., 21% VAT, can be made into an input)
+        const taxRate = 0.21;
+        const tax = subtotal * taxRate;
+        const total = subtotal + tax;
+        
+        template = template.replace('##ITEMS##', itemsHtml);
+        template = template.replace('##SUBTOTAL##', formatNumber(subtotal));
+        template = template.replace('##TAX##', formatNumber(tax));
+        template = template.replace('##TOTAL##', formatNumber(total));
+        
+        iframe.srcdoc = template;
+    }
+
+    // --- Contacts Page ---
+    let editingContactIndex = -1;
+
+    function loadContacts() { const storedContacts = localStorage.getItem(contactDataLocalStorageKey); companyContacts = storedContacts ? JSON.parse(storedContacts) : [ { name: 'ASUS', country: 'Taiwan', address: 'No. 15, Li-Te Rd.', city: 'Taipei', zip: '112', state: '---', phone: '+886-2-2894-3447', email: 'Forms', url: 'asus.com/support/' }, { name: 'HP', country: 'USA', address: '1501 Page Mill Road', city: 'Palo Alto, CA', zip: '94304', state: 'California', phone: '+1 650-857-1501', email: 'Forms', url: 'hp.com/us-en/contact-hp' } ]; renderContacts(); }
+    function saveContacts() { localStorage.setItem(contactDataLocalStorageKey, JSON.stringify(companyContacts)); }
+    function renderContacts() { const tableBody = document.getElementById('contacts-table-body'); tableBody.innerHTML = ''; companyContacts.forEach((contact, index) => { const row = tableBody.insertRow(); row.innerHTML = `<td>${contact.name || '---'}</td><td>${contact.country || '---'}</td><td>${contact.address || '---'}</td><td>${contact.city || '---'}</td><td>${contact.zip || '---'}</td><td>${contact.state || '---'}</td><td>${contact.phone || '---'}</td><td>${contact.email || '---'}</td><td>${contact.url || '---'}</td><td><button class="small-action secondary" onclick="openEditContactModal(${index})">✏️</button> <button class="small-action danger" onclick="deleteContact(${index})">X</button></td>`; }); }
+    function deleteContact(index) { if (confirm(`Opravdu chcete smazat kontakt "${companyContacts[index].name}"?`)) { companyContacts.splice(index, 1); saveContacts(); renderContacts(); } }
+    
+    function openEditContactModal(index) {
+        editingContactIndex = index;
+        const contact = companyContacts[index];
+        if (!contact) return;
+        
+        document.getElementById('edit-contact-name').value = contact.name || '';
+        document.getElementById('edit-contact-country').value = contact.country || '';
+        document.getElementById('edit-contact-address').value = contact.address || '';
+        document.getElementById('edit-contact-city').value = contact.city || '';
+        document.getElementById('edit-contact-zip').value = contact.zip || '';
+        document.getElementById('edit-contact-state').value = contact.state || '';
+        document.getElementById('edit-contact-phone').value = contact.phone || '';
+        document.getElementById('edit-contact-email').value = contact.email || '';
+        document.getElementById('edit-contact-url').value = contact.url || '';
+        
+        document.getElementById('edit-contact-modal').classList.add('visible');
+    }
+
+    function saveContactChanges() {
+        if (editingContactIndex < 0) return;
+
+        const updatedContact = {
+            name: document.getElementById('edit-contact-name').value,
+            country: document.getElementById('edit-contact-country').value,
+            address: document.getElementById('edit-contact-address').value,
+            city: document.getElementById('edit-contact-city').value,
+            zip: document.getElementById('edit-contact-zip').value,
+            state: document.getElementById('edit-contact-state').value,
+            phone: document.getElementById('edit-contact-phone').value,
+            email: document.getElementById('edit-contact-email').value,
+            url: document.getElementById('edit-contact-url').value,
+        };
+
+        companyContacts[editingContactIndex] = updatedContact;
+        saveContacts();
+        renderContacts();
+        document.getElementById('edit-contact-modal').classList.remove('visible');
+        editingContactIndex = -1;
+    }
+
+    async function findContactWithAI() { const query = document.getElementById('ai-contact-search').value.trim(); if (!query) { alert('Zadejte název firmy pro vyhledání.'); return; } const btn = document.getElementById('ai-contact-btn'); btn.disabled = true; btn.textContent = '...'; const prompt = `Najdi veřejně dostupné kontaktní informace pro firmu "${query}". Zajímají mě následující údaje: oficiální název firmy, země, adresa sídla, město, PSČ, stát/provincie, hlavní telefonní číslo, email pro podporu a URL kontaktní stránky. Tvá odpověď MUSÍ být POUZE JSON objekt a nic jiného, se strukturou: { "name": "...", "country": "...", "address": "...", "city": "...", "zip": "...", "state": "...", "phone": "...", "email": "...", "url": "..." }. Pokud některý údaj nenajdeš, nech pole prázdné nebo uveď "---".`; const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`; try { const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }); if (!response.ok) { throw new Error((await response.json()).error.message); } const data = await response.json(); let jsonString = data.candidates[0].content.parts[0].text; const firstBracket = jsonString.indexOf('{'); const lastBracket = jsonString.lastIndexOf('}'); if (firstBracket === -1 || lastBracket === -1) { throw new Error("AI nevrátila platný JSON objekt."); } jsonString = jsonString.substring(firstBracket, lastBracket + 1); const newContact = JSON.parse(jsonString); companyContacts.push(newContact); saveContacts(); renderContacts(); document.getElementById('ai-contact-search').value = ''; alert(`Kontakt pro ${newContact.name} byl přidán.`); } catch (error) { console.error("AI Contact Find Error:", error); alert(`Při hledání kontaktu nastala chyba: ${error.message}`); } finally { btn.disabled = false; btn.textContent = translations[currentLang].search; } }
+    
+    // --- DRAGGABLE CHAT MODAL ---
+    function makeChatDraggable() { const modal = document.querySelector('.chat-container-modal'); const header = document.getElementById('chat-page-header'); let isDragging = false, offsetX, offsetY; header.addEventListener('mousedown', (e) => { if (e.target.closest('button') || e.target.closest('#chat-header-controls')) return; isDragging = true; offsetX = e.clientX - modal.offsetLeft; offsetY = e.clientY - modal.offsetTop; header.style.cursor = 'grabbing'; document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp, { once: true }); }); function onMouseMove(e) { if (!isDragging) return; let newX = e.clientX - offsetX; let newY = e.clientY - offsetY; const maxX = window.innerWidth - modal.offsetWidth; const maxY = window.innerHeight - modal.offsetHeight; modal.style.left = `${Math.max(0, Math.min(newX, maxX))}px`; modal.style.top = `${Math.max(0, Math.min(newY, maxY))}px`; modal.style.transform = 'none'; } function onMouseUp() { isDragging = false; header.style.cursor = 'move'; document.removeEventListener('mousemove', onMouseMove); } }
+
+    // --- SOUND & FEEDBACK ---
+    function playSound(audioElement) { if (audioElement) { audioElement.currentTime = 0; audioElement.play().catch(e => {}); } }
+    function showFeedbackModal() { document.getElementById('feedback-modal').classList.add('visible'); }
+    function copyToClipboard(elementId, buttonElement) { const input = document.getElementById(elementId); navigator.clipboard.writeText(input.value).then(() => { const originalText = buttonElement.textContent; buttonElement.textContent = translations[currentLang].copied; setTimeout(() => { buttonElement.textContent = originalText; }, 2000); }).catch(err => { alert('Chyba při kopírování do schránky.'); }); }
+
+    // --- DATA BACKUP & RESTORE ---
+    function backupAllData() { const allData = {}; for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); allData[key] = localStorage.getItem(key); } const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); const date = new Date().toISOString().slice(0, 10); link.href = URL.createObjectURL(blob); link.download = `ai_content_assistant_backup_${date}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); alert('Záloha všech dat byla stažena.'); }
+    function restoreData(event) { const file = event.target.files[0]; if (!file) return; if (!confirm("Opravdu chcete obnovit data ze souboru? Tímto přepíšete všechna aktuální data v aplikaci!")) { event.target.value = ''; return; } const reader = new FileReader(); reader.onload = function(e) { try { const data = JSON.parse(e.target.result); localStorage.clear(); Object.keys(data).forEach(key => { localStorage.setItem(key, data[key]); }); alert('Data byla úspěšně obnovena! Aplikace bude nyní znovu načtena.'); window.location.reload(); } catch (error) { alert('Chyba při načítání souboru. Ujistěte se, že se jedná o platný soubor zálohy.'); console.error("Restore Error:", error); } }; reader.readAsText(file); event.target.value = ''; }
+
+    // --- INITIALIZATION & API KEY CHECK ---
+    function saveApiKeyAndStart() { const apiKeyInput = document.getElementById('api-key-input-welcome'); const apiKey = apiKeyInput.value.trim(); const errorDiv = document.getElementById('api-key-error'); if (apiKey && apiKey.length > 30) { GEMINI_API_KEY = apiKey; localStorage.setItem(geminiApiKeyLocalStorageKey, apiKey); document.getElementById('welcome-screen').classList.remove('visible'); initializeApp(); } else { errorDiv.style.display = 'block'; apiKeyInput.style.borderColor = 'var(--accent-red)'; } }
+    function initializeApp() {
+        document.getElementById('app-container').style.visibility = 'visible';
+        showPage('editor');
+        makeResizable('resizer-ebay');
+        makeResizable('resizer-aukro');
+        makeResizable('resizer-chat');
+        loadAdminSettings();
+        loadContacts();
+        setupEditor('ebay');
+        setupEditor('aukro');
+        setupInputListeners();
+        initializeChat();
+        initializeCurrencyConverter();
+        initializeImageConverter();
+        initializeInvoiceGenerator();
+        makeChatDraggable();
+    }
+    function setupInputListeners() {
+        document.getElementById('language-switcher').addEventListener('change', (e) => setLanguage(e.target.value));
+        document.getElementById('fill-with-ai-btn').addEventListener('click', fillAllWithAI);
+        document.getElementById('fill-aukro-with-ai-btn').addEventListener('click', fillAukroWithAI);
+        document.getElementById('slogan-bold-btn').addEventListener('click', makeSloganBold);
+        document.getElementById('input_footer_year').addEventListener('input', updateEbayPreview);
+        document.getElementById('input_footer_company_name').addEventListener('input', updateEbayPreview);
+        
+        ui.chatBubbleWrapper.addEventListener('click', openChatBubble);
+        ui.closeChatBtn.addEventListener('click', () => ui.chatModal.classList.remove('visible'));
+        ui.toggleBlurBtn.addEventListener('click', () => ui.chatModal.classList.toggle('no-blur'));
+        ui.refreshChatBtn.addEventListener('click', refreshChat);
+        ui.toggleMaximizeBtn.addEventListener('click', toggleMaximizeChat);
+
+        ui.sendChatBtn.addEventListener('click', sendMessage);
+        ui.newChatBtn.addEventListener('click', () => createNewChat());
+        ui.showHelpBtn.addEventListener('click', showTutorial);
+        ui.chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+        ui.uploadImageBtn.addEventListener('click', () => ui.uploadImageInput.click());
+        ui.uploadImageInput.addEventListener('change', handleImageUpload);
+        ui.removeImageBtn.addEventListener('click', removeImage);
+        versionedFields.forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', (e) => versionManager.save(id, e.target.value)); });
+        ebayMappings.forEach(map => { if (map.inputId) { const el = document.getElementById(map.inputId); if (el) el.addEventListener('input', updateEbayPreview); } });
+        aukroMappings.forEach(map => { if (map.inputId) { const el = document.getElementById(map.inputId); if (el) el.addEventListener('input', updateAukroPreview); } });
+    
+        document.getElementById('save-admin-settings-btn').addEventListener('click', saveAdminSettings);
+        document.getElementById('reset-admin-settings-btn').addEventListener('click', resetAdminSettings);
+        
+        document.getElementById('ai-contact-btn').addEventListener('click', findContactWithAI);
+        document.getElementById('save-contact-changes-btn').addEventListener('click', saveContactChanges);
+        
+        document.getElementById('backup-data-btn').addEventListener('click', backupAllData);
+        document.getElementById('restore-data-input').addEventListener('change', restoreData);
+
+        const typewriterSound = document.getElementById('typewriter-sound');
+        const clickSound = document.getElementById('click-sound');
+        document.querySelectorAll('input, textarea').forEach(el => { el.addEventListener('input', () => playSound(typewriterSound)); });
+        document.body.addEventListener('click', (e) => { if (e.target.closest('button, a, .tools-menu-content > *, select, input[type="checkbox"], .spec-row')) { playSound(clickSound); } });
+    }
+
+    window.onload = () => {
+        const savedLang = localStorage.getItem(appLanguageKey) || 'en';
+        document.getElementById('language-switcher').value = savedLang;
+        setLanguage(savedLang);
+        
+        const storedApiKey = localStorage.getItem(geminiApiKeyLocalStorageKey);
+        if (storedApiKey) {
+            GEMINI_API_KEY = storedApiKey;
+            initializeApp();
+        } else {
+            document.getElementById('welcome-screen').classList.add('visible');
+            document.getElementById('save-api-key-btn').addEventListener('click', saveApiKeyAndStart);
+            document.getElementById('api-key-input-welcome').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') saveApiKeyAndStart();
+            });
+        }
+    };
+    </script>
+</body>
+</html>

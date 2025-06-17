@@ -1,5 +1,19 @@
 # AI Content Assistant PRO
 
+UPDATES:
+
+Update LOG (v1.5.1)
+
+New Tool: Added Invoice Generator (CZ/EN) with print/save to PDF option.
+New Tool: Added Image Converter (JPG, PNG, WEBP).
+Enhancement: Company contacts can now be manually edited.
+Added application translator (CZ/EN) with a switcher in the header.
+Fixed the "Provide Feedback" function.
+Added a welcome screen requiring a custom Gemini API key.
+New feature to download final HTML templates (eBay/Aukro).
+New feature to back up and restore all application data (in Settings).
+
+
 ![Version](https://img.shields.io/badge/version-1.5.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Open Source](https://shields.io/badge/open--source-❤️-purple)

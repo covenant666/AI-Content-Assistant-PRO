@@ -4,8 +4,12 @@ UPDATES:
 
 Update LOG (v1.5.1)
 
+![new invoice generator](https://github.com/user-attachments/assets/5d8abaa8-9fe0-4e82-ae17-abb56fae91e7)
 New Tool: Added Invoice Generator (CZ/EN) with print/save to PDF option.
+
+![Image Converter](https://github.com/user-attachments/assets/538d8c92-3532-4237-87fb-fbc3632c265b)
 New Tool: Added Image Converter (JPG, PNG, WEBP).
+![Edit Company Details](https://github.com/user-attachments/assets/d1a5a668-9e7a-4841-acef-519f6aa7f3d7)
 Enhancement: Company contacts can now be manually edited.
 Added application translator (CZ/EN) with a switcher in the header.
 Fixed the "Provide Feedback" function.
